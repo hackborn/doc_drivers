@@ -7,6 +7,16 @@
 *.dll
 *.so
 *.dylib
+cmd/makeTemplates/makeTemplates
+cmd/makeTemplates/makeTemplates.exe
+cmd/run/run
+cmd/run/run.exe
+
+# Almost everything in data directories
+cmd/makeTemplates/data/*
+!cmd/makeTemplates/data/README.md
+sqlite/data/*
+!sqlite/data/README.md
 
 # Test binary, built with `go test -c`
 *.test
