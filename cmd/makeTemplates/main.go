@@ -14,6 +14,6 @@ func main() {
 		fmt.Println(help)
 		return
 	}
-	m := newMakeTemplates(WithPrefix("_tox"))
+	m := newMakeTemplates(WithPrefix("_tox"), WithFactory(f))
 	m.Run(f.ReferenceFiles)
 }

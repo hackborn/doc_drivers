@@ -7,4 +7,4 @@ import (
 // NewDriverFunc returns a new instance of a doc.Driver.
 type NewDriverFunc func() doc.Driver
 
-type ProcessTemplateFunc func()
+type ProcessTemplateFunc func(*Content) error

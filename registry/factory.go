@@ -11,4 +11,7 @@ type Factory struct {
 
 	// New is a function to generate a new driver instance.
 	New NewDriverFunc
+
+	// Clients can add additional processing when generating templates.
+	ProcessTemplate ProcessTemplateFunc
 }

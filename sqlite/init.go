@@ -24,13 +24,14 @@ func init() {
 		Name:       sqlite,
 		DriverName: "ref/" + sqlite,
 		DbPath:     dbpath,
-		New:        fn,
 		ReferenceFiles: map[string]string{
 			"const":    refConstGo,
 			"driver":   refDriverGo,
 			"fn":       refFnGo,
 			"metadata": refMetadataGo,
 		},
+		New:             fn,
+		ProcessTemplate: makeTemplates,
 	}
 	errors.Panic(registry.Register(f))
 }
