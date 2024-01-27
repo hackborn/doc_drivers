@@ -24,6 +24,7 @@ const (
 
 var (
 	_toxDefinitions = map[string]string{
+		// Begin tabledefs
 		`Company`: `DROP TABLE IF EXISTS Company;
 CREATE TABLE IF NOT EXISTS Company (
 	id VARCHAR(255),
@@ -42,5 +43,6 @@ CREATE TABLE IF NOT EXISTS Filing (
 	fy INTEGER,
 	PRIMARY KEY (ticker, end, form)
 );`,
+		// End tabledefs
 	}
 )

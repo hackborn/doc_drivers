@@ -1,9 +1,10 @@
 package main
 
 const (
-	prefixKey     = "{{.prefix}}"
-	packageKey    = "{{.package}}"
-	toxPackageKey = "{{.toxPackage}}"
+	datestampKey  = "{{.Datestamp}}"
+	prefixKey     = "{{.Prefix}}"
+	packageKey    = "{{.Package}}"
+	toxPackageKey = "{{.ToxPackage}}"
 )
 
 const (
