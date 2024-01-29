@@ -31,10 +31,12 @@ func main() {
 }
 
 func runGenerate(f registry.Factory) error {
-	loadPath := filepath.Join("..", "..", "domain", "*")
-	savePath := filepath.Join("data")
-	expr := `graph (load(Glob="` + loadPath + `") -> struct -> go(Pkg=db, Prefix=test) -> fmt -> save(Path="` + savePath + `"))`
-	_, err := pipeline.RunExpr(expr, nil)
+	env := map[string]any{`$load`: filepath.Join("..", "..", "domain", "*"),
+		`$save`:   filepath.Join("data"),
+		`$pkg`:    "db",
+		`$prefix`: "tst"}
+	expr := `graph (load(Glob=$load) -> struct -> go(Pkg=$pkg, Prefix=$prefix) -> save(Path=$save))`
+	_, err := pipeline.RunExpr(expr, nil, env)
 	return err
 }
 
