@@ -23,11 +23,17 @@ func init() {
 	genFn := func() doc.Driver {
 		return sqlitegendriver.NewDriver(sqlite)
 	}
+	// Make this accessible to nodes without going through this driver.
+	// This raises the question of why I have these factory functions at all.
+	// Unless I see a downside to it, I'll probably remove them.
+	doc.Register(driverName, refFn())
+	doc.Register("gen/"+sqlite, genFn())
+
 	// Database path is relative to the commands. Relocate it to myself.
 	dbpath := filepath.Join("..", "..", "drivers", "sqlite", "data", "db")
 	f := registry.Factory{
 		Name:       sqlite,
-		DriverName: "ref/" + sqlite,
+		DriverName: driverName,
 		DbPath:     dbpath,
 		ReferenceFiles: map[string]string{
 			"const":    refConstGo,
