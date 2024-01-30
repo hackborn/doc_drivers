@@ -9,8 +9,11 @@ type Factory struct {
 	// references to create the tox template files.
 	ReferenceFiles map[string]string
 
-	// New is a function to generate a new driver instance.
-	New NewDriverFunc
+	// NewRef is a function to generate a new doc driver instance based on the reference driver.
+	NewRef NewDriverFunc
+
+	// NewGenerated generates a new doc driver based on the generated driver.
+	NewGenerated NewDriverFunc
 
 	// Clients can add additional processing when generating templates.
 	ProcessTemplate ProcessTemplateFunc

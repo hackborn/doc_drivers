@@ -21,6 +21,8 @@ cmd/makeTemplates/data/*
 !cmd/makeTemplates/data/README.md
 sqlite/data/*
 !sqlite/data/README.md
+drivers/sqlite/data/*
+!drivers/sqlite/data/README.md
 
 # Test binary, built with `go test -c`
 *.test

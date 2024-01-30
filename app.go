@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	_ "github.com/hackborn/doc_drivers/drivers/sqlite"
 	"github.com/hackborn/doc_drivers/registry"
-	_ "github.com/hackborn/doc_drivers/sqlite"
 )
 
 // GetFactoryFromCla answers the factory specified from the command line args.

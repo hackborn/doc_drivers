@@ -1,4 +1,4 @@
-package sqlitedriver
+package sqliterefdriver
 
 import (
 	"sync/atomic"

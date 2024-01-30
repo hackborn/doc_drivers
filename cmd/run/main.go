@@ -17,10 +17,10 @@ func main() {
 		fmt.Println(help)
 		return
 	}
-	fmt.Println(f)
+	//	fmt.Println(f)
 
 	// Initialize the driver
-	doc.Register(f.DriverName, f.New())
+	doc.Register(f.DriverName, f.NewGenerated())
 
 	// Open the database
 	db, err := doc.Open(f.DriverName, f.DbPath)
