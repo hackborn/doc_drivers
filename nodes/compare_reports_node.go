@@ -53,8 +53,10 @@ func (n *compareReportsNode) compareEntries(refEntry, genEntry ReportEntry) erro
 	if refEntry.Name != genEntry.Name {
 		return fmt.Errorf("Wrong test name, have %v but want %v", genEntry.Name, refEntry.Name)
 	}
-	if !reflect.DeepEqual(refEntry.Err, genEntry.Err) {
-		return fmt.Errorf("%v wrong error, have %v but want %v", refEntry.Name, genEntry.Err, refEntry.Err)
+	if refEntry.Err == nil && genEntry.Err != nil {
+		return fmt.Errorf("%v wrong error, have %w but want nil", refEntry.Name, genEntry.Err)
+	} else if refEntry.Err != nil && genEntry.Err == nil {
+		return fmt.Errorf("%v wrong error, have nil but want %w", refEntry.Name, refEntry.Err)
 	}
 	if !reflect.DeepEqual(refEntry.Response, genEntry.Response) {
 		d1, _ := json.Marshal(refEntry.Response)
