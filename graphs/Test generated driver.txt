@@ -1,0 +1,4 @@
+graph (
+    runref(DriverName=$drivername) -> compare
+    rungen(DriverName=$drivername) -> compare
+)
