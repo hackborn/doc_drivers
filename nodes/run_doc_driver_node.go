@@ -1,6 +1,7 @@
 package nodes
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/hackborn/doc"
@@ -16,8 +17,8 @@ func newRunDocDriverNode(docDriverPrefix string) pipeline.Node {
 }
 
 type runDocDriverNode struct {
-	Verbose    bool
-	DriverName string
+	Verbose bool
+	Backend string
 
 	docDriverPrefix string
 	fn              []runReportFunc
@@ -27,9 +28,9 @@ func (n *runDocDriverNode) Run(state *pipeline.State, input pipeline.RunInput) (
 	if state.Flush {
 		return nil, nil
 	}
-	f, ok := registry.Find(n.DriverName)
+	f, ok := registry.Find(n.Backend)
 	if !ok {
-		return nil, fmt.Errorf("No driver named \"%v\"", n.DriverName)
+		return nil, fmt.Errorf("No backend named \"%v\"", n.Backend)
 	}
 
 	// Open the database
@@ -48,7 +49,12 @@ func (n *runDocDriverNode) runReport(db *doc.DB) (*pipeline.RunOutput, error) {
 	for _, fn := range n.fn {
 		e := fn(db)
 		if n.Verbose {
-			fmt.Println(e.Name, "resp", e.Response, "err", e.Err)
+			sr := ""
+			if e.Response != nil {
+				resp, _ := json.Marshal(e.Response)
+				sr = string(resp)
+			}
+			fmt.Println(e.Name, "resp", sr, "err", e.Err)
 		}
 		if e.Err != nil {
 			return nil, fmt.Errorf("Error for driver \"%v\" test \"%v\": %w", n.docDriverName(), e.Name, e.Err)
@@ -116,7 +122,7 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 }
 
 func (n *runDocDriverNode) docDriverName() string {
-	return n.docDriverPrefix + "/" + n.DriverName
+	return n.docDriverPrefix + "/" + n.Backend
 }
 
 type runReportFunc func(db *doc.DB) ReportEntry

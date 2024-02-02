@@ -2,24 +2,24 @@ package main
 
 import (
 	"fmt"
+	"path"
+	"strings"
 
-	"github.com/hackborn/doc_drivers"
-	_ "github.com/hackborn/doc_drivers/nodes"
+	_ "github.com/hackborn/doc_drivers"
 	"github.com/hackborn/doc_drivers/registry"
 	oferrors "github.com/hackborn/onefunc/errors"
 	"github.com/hackborn/onefunc/pipeline"
-	_ "github.com/hackborn/onefunc/pipeline/nodes"
 	"github.com/manifoldco/promptui"
 )
 
 func main() {
-	graph, err := getGraph()
+	f, err := getBackend()
 	if err == quitErr {
 		return
 	}
 	oferrors.LogFatal(err)
 
-	f, err := getDriver()
+	graph, err := getGraph(f)
 	if err == quitErr {
 		return
 	}
@@ -30,17 +30,54 @@ func main() {
 }
 
 func run(graph string, f registry.Factory) error {
-	env := map[string]any{
-		"$drivername": f.Name,
+	p, err := pipeline.Compile(graph)
+	if err != nil {
+		return err
 	}
-	_, err := pipeline.RunExpr(graph, nil, env)
+	// Supply the env vars
+	env := makeEnv(p.Env(), f)
+	_, err = pipeline.Run(p, nil, env)
 	return err
 }
 
-func getGraph() (string, error) {
-	graphNames := drivers.GraphNames()
+func makeEnv(env map[string]any, f registry.Factory) map[string]any {
+	if env == nil {
+		env = make(map[string]any)
+	}
+	pathroot := path.Join("..", "..")
+	for k, v := range env {
+		if sv, ok := v.(string); ok {
+			env[k] = strings.ReplaceAll(sv, "$pathroot", pathroot)
+		}
+	}
+	env["$backend"] = f.Name
+	return env
+}
+
+func getBackend() (registry.Factory, error) {
+	backendNames := registry.Names()
+	if len(backendNames) < 1 {
+		return registry.Factory{}, fmt.Errorf("no backends available")
+	}
+	prompt := promptui.Select{
+		Label: "Select a backend. Ctrl-C to quit",
+		Items: backendNames,
+	}
+	_, backendName, err := prompt.Run()
+	if err != nil {
+		if err.Error() == `^C` {
+			return registry.Factory{}, quitErr
+		}
+		return registry.Factory{}, fmt.Errorf("prompt error: %w", err)
+	}
+
+	return registry.Open(backendName)
+}
+
+func getGraph(f registry.Factory) (string, error) {
+	graphNames := f.GraphNames()
 	if len(graphNames) < 1 {
-		return "", fmt.Errorf("no graphs available")
+		return "", fmt.Errorf("no operations available")
 	}
 	prompt := promptui.Select{
 		Label: "Select an operation. Ctrl-C to quit",
@@ -54,34 +91,11 @@ func getGraph() (string, error) {
 		return "", fmt.Errorf("prompt error: %w", err)
 	}
 
-	graph, err := drivers.Graph(graphName)
+	graph, err := f.Graph(graphName)
 	if err != nil {
 		return "", err
 	}
 	return graph, nil
-}
-
-func getDriver() (registry.Factory, error) {
-	driverNames := drivers.DriverNames()
-	if len(driverNames) < 1 {
-		return registry.Factory{}, fmt.Errorf("no drivers available")
-	}
-	prompt := promptui.Select{
-		Label: "Select a driver. Ctrl-C to quit",
-		Items: driverNames,
-	}
-	_, driverName, err := prompt.Run()
-	if err != nil {
-		if err.Error() == `^C` {
-			return registry.Factory{}, quitErr
-		}
-		return registry.Factory{}, fmt.Errorf("prompt error: %w", err)
-	}
-
-	if f, ok := registry.Find(driverName); ok {
-		return f, nil
-	}
-	return registry.Factory{}, fmt.Errorf("No driver available for name \"%v\"", driverName)
 }
 
 var quitErr = fmt.Errorf("quit")

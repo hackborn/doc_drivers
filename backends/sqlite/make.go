@@ -1,4 +1,4 @@
-package sqlitedriver
+package sqlitebackend
 
 import (
 	"fmt"

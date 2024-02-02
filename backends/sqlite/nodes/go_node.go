@@ -48,10 +48,10 @@ type node struct {
 }
 
 func (n *node) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
-	eb := &errors.FirstBlock{}
 	if state.Flush == true {
 		return n.runFlushPin(state)
 	}
+	eb := &errors.FirstBlock{}
 	for _, pin := range input.Pins {
 		switch p := pin.Payload.(type) {
 		case *pipeline.StructData:
@@ -94,25 +94,26 @@ func (n *node) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructDat
 func (n *node) runFlushPin(state *pipeline.State) (*pipeline.RunOutput, error) {
 	vars, err := n.makeVars()
 	if err != nil {
-		return nil, fmt.Errorf("togo err: %w", err)
+		return nil, fmt.Errorf("go node err: %w", err)
 	}
 
 	output := &pipeline.RunOutput{}
-	// fmt.Println("vars", vars)
-	n.makeTemplates(vars, output)
-	return output, nil
+	//	fmt.Println("vars", vars)
+	err = n.makeTemplates(vars, output)
+	return output, err
 }
 
 func (n *node) makeTemplates(vars map[string]any, output *pipeline.RunOutput) error {
 	eb := &errors.FirstBlock{}
-	parent := filepath.Join("templates", n.Format)
-	entries, err := templates.ReadDir(parent)
+	//	parent := filepath.Join("templates", n.Format)
+	parent := "templates"
+	entries, err := templatesFs.ReadDir(parent)
 	if err != nil {
 		return err
 	}
 
 	for _, entry := range entries {
-		d, err := templates.ReadFile(filepath.Join(parent, entry.Name()))
+		d, err := templatesFs.ReadFile(filepath.Join(parent, entry.Name()))
 		eb.AddError(err)
 		b, err := n.runTemplate(string(d), vars)
 		eb.AddError(err)

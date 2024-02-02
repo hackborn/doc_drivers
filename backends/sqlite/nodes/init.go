@@ -6,7 +6,7 @@ import (
 	"github.com/hackborn/onefunc/pipeline"
 )
 
-func init() {
+func RegisterNodes() {
 	pipeline.RegisterNode("go", func() pipeline.Node {
 		return newGoNode()
 	})
@@ -16,4 +16,4 @@ func init() {
 }
 
 //go:embed templates
-var templates embed.FS
+var templatesFs embed.FS

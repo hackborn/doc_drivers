@@ -1,0 +1,10 @@
+graph (
+    load(Glob=$load) -> struct(Tag=tox) -> go(Pkg=$pkg, Prefix=$prefix) -> save(Path=$save)
+)
+
+env (
+    $load="$pathroot/domain/*",
+    $save="$pathroot/backends/sqlite/gen",
+    $pkg="sqlitegendriver",
+    $prefix="gen"
+)
