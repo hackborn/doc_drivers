@@ -10,10 +10,10 @@ import (
 	ofstrings "github.com/hackborn/onefunc/strings"
 )
 
-func newSqlNode() pipeline.Node {
-	n := &sqlNode{Format: sqliteFormat}
+func newSqlNode() pipeline.Runner {
+	n := &sqlNode{Format: formatSqlite}
 	// Make functions
-	n.makes = []makeFunc{
+	n.makes = []makeSqlPinFunc{
 		n.makeDefinitionPin,
 	}
 	return n
@@ -21,7 +21,7 @@ func newSqlNode() pipeline.Node {
 
 type sqlNode struct {
 	Format string
-	makes  []makeFunc
+	makes  []makeSqlPinFunc
 }
 
 func (n *sqlNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
@@ -154,9 +154,3 @@ func newSqlParsedTag(f pipeline.StructField) sqlParsedTag {
 	}
 	return pt
 }
-
-type makeFunc func(state *pipeline.State, pin *pipeline.StructData) (pipeline.Pin, error)
-
-const (
-	sqliteFormat = "sqlite"
-)

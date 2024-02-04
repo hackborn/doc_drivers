@@ -5,13 +5,13 @@ import (
 )
 
 func init() {
-	pipeline.RegisterNode("compare", func() pipeline.Node {
+	pipeline.RegisterNode("compare", func() pipeline.Runner {
 		return &compareReportsNode{}
 	})
-	pipeline.RegisterNode("rungen", func() pipeline.Node {
+	pipeline.RegisterNode("rungen", func() pipeline.Runner {
 		return newRunDocDriverNode("gen")
 	})
-	pipeline.RegisterNode("runref", func() pipeline.Node {
+	pipeline.RegisterNode("runref", func() pipeline.Runner {
 		return newRunDocDriverNode("ref")
 	})
 }

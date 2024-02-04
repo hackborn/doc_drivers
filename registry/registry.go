@@ -24,27 +24,26 @@ func Names() []string {
 }
 
 type registry struct {
-	l         sync.Locker
+	lock      sync.Mutex
 	factories map[string]Factory
 }
 
 func newRegistry() *registry {
-	lock := &sync.Mutex{}
 	factories := make(map[string]Factory)
-	return &registry{l: lock, factories: factories}
+	return &registry{factories: factories}
 }
 
 func (r *registry) Register(f Factory) error {
-	defer lock.Locker(reg.l).Unlock()
+	defer lock.Locker(&r.lock).Unlock()
 	if _, ok := r.factories[f.Name]; ok {
-		return fmt.Errorf(`Factory name "` + f.Name + `" alreeady in use`)
+		return fmt.Errorf(`Factory "` + f.Name + `" alreeady registered`)
 	}
 	r.factories[f.Name] = f
 	return nil
 }
 
 func (r *registry) Open(name string) (Factory, error) {
-	defer lock.Locker(reg.l).Unlock()
+	defer lock.Locker(&r.lock).Unlock()
 	if f, ok := r.factories[name]; ok {
 		if f.Open != nil {
 			err := f.Open()
@@ -58,7 +57,7 @@ func (r *registry) Open(name string) (Factory, error) {
 }
 
 func (r *registry) Find(name string) (Factory, bool) {
-	defer lock.Locker(reg.l).Unlock()
+	defer lock.Locker(&r.lock).Unlock()
 	if f, ok := r.factories[name]; ok {
 		return f, ok
 	}
@@ -66,7 +65,7 @@ func (r *registry) Find(name string) (Factory, bool) {
 }
 
 func (r *registry) Names() []string {
-	defer lock.Locker(reg.l).Unlock()
+	defer lock.Locker(&r.lock).Unlock()
 	n := make([]string, 0, len(r.factories))
 	for k, _ := range r.factories {
 		n = append(n, k)

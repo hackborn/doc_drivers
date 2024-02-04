@@ -13,9 +13,6 @@ type compareReportsNode struct {
 }
 
 func (n *compareReportsNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
-	if state.Flush == true {
-		return nil, nil
-	}
 	var refRun *RunReportData = nil
 	var genRun *RunReportData = nil
 	for _, pin := range input.Pins {

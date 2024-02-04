@@ -1,0 +1,3 @@
+graph (
+    load(Fs=sqliteref, Glob="sqliteref/ref_*.go") -> template(Prefix=_tox)
+)

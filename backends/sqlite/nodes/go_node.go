@@ -17,18 +17,18 @@ import (
 	"github.com/hackborn/onefunc/pipeline"
 )
 
-func newGoNode() pipeline.Node {
+func newGoNode() pipeline.Runner {
 	caser := cases.Title(language.English)
 	structs := make(map[string]*pipeline.StructData)
 	d := make(map[string]string)
 	// Currently sqlite is the only supported format, so I'll make it a default
-	return &node{Format: formatSqlite,
+	return &goNode{Format: formatSqlite,
 		caser:       caser,
 		definitions: d,
 		structs:     structs}
 }
 
-type node struct {
+type goNode struct {
 	// Format of the driver I'm generating. Currently only sqlite is
 	// supported, so that's used as the default.
 	Format string
@@ -47,10 +47,7 @@ type node struct {
 	definitions map[string]string
 }
 
-func (n *node) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
-	if state.Flush == true {
-		return n.runFlushPin(state)
-	}
+func (n *goNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
 	eb := &errors.FirstBlock{}
 	for _, pin := range input.Pins {
 		switch p := pin.Payload.(type) {
@@ -61,7 +58,19 @@ func (n *node) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.Ru
 	return nil, eb.Err
 }
 
-func (n *node) runStructPin(state *pipeline.State, pin *pipeline.StructData) error {
+func (n *goNode) Flush(state *pipeline.State) (*pipeline.RunOutput, error) {
+	vars, err := n.makeVars()
+	if err != nil {
+		return nil, fmt.Errorf("go node err: %w", err)
+	}
+
+	output := &pipeline.RunOutput{}
+	//	fmt.Println("vars", vars)
+	err = n.makeTemplates(vars, output)
+	return output, err
+}
+
+func (n *goNode) runStructPin(state *pipeline.State, pin *pipeline.StructData) error {
 	n.structs[pin.Name] = pin
 	switch n.Format {
 	case formatSqlite:
@@ -71,7 +80,7 @@ func (n *node) runStructPin(state *pipeline.State, pin *pipeline.StructData) err
 	}
 }
 
-func (n *node) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructData) error {
+func (n *goNode) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructData) error {
 	sn := newSqlNode()
 	output, err := sn.Run(state, pipeline.NewInput(pipeline.Pin{Payload: pin}))
 	if err != nil {
@@ -91,19 +100,7 @@ func (n *node) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructDat
 	return nil
 }
 
-func (n *node) runFlushPin(state *pipeline.State) (*pipeline.RunOutput, error) {
-	vars, err := n.makeVars()
-	if err != nil {
-		return nil, fmt.Errorf("go node err: %w", err)
-	}
-
-	output := &pipeline.RunOutput{}
-	//	fmt.Println("vars", vars)
-	err = n.makeTemplates(vars, output)
-	return output, err
-}
-
-func (n *node) makeTemplates(vars map[string]any, output *pipeline.RunOutput) error {
+func (n *goNode) makeTemplates(vars map[string]any, output *pipeline.RunOutput) error {
 	eb := &errors.FirstBlock{}
 	//	parent := filepath.Join("templates", n.Format)
 	parent := "templates"
@@ -127,7 +124,7 @@ func (n *node) makeTemplates(vars map[string]any, output *pipeline.RunOutput) er
 	return eb.Err
 }
 
-func (n *node) runTemplate(content string, vars map[string]any) ([]byte, error) {
+func (n *goNode) runTemplate(content string, vars map[string]any) ([]byte, error) {
 	eb := errors.FirstBlock{}
 	t1 := template.New("t1")
 	t1, err := t1.Parse(content)
@@ -138,11 +135,11 @@ func (n *node) runTemplate(content string, vars map[string]any) ([]byte, error) 
 	return buf.Bytes(), eb.Err
 }
 
-func (n *node) runFormat(src []byte) ([]byte, error) {
+func (n *goNode) runFormat(src []byte) ([]byte, error) {
 	return format.Source(src)
 }
 
-func (n *node) fileName(base, format string) string {
+func (n *goNode) fileName(base, format string) string {
 	prefix := strings.Trim(n.Prefix, "_")
 	if prefix != "" {
 		prefix += "_"
@@ -154,7 +151,7 @@ func (n *node) fileName(base, format string) string {
 	return prefix + base + format
 }
 
-func (n *node) makeVars() (map[string]any, error) {
+func (n *goNode) makeVars() (map[string]any, error) {
 	if n.Format == "" {
 		return nil, fmt.Errorf("Requires format (set Format= on node)")
 	}

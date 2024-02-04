@@ -2,10 +2,7 @@ package sqlitebackend
 
 import (
 	"embed"
-	_ "embed"
-	"log"
 	"path/filepath"
-	"strings"
 
 	_ "modernc.org/sqlite"
 
@@ -16,9 +13,13 @@ import (
 	"github.com/hackborn/doc_drivers/graphs"
 	"github.com/hackborn/doc_drivers/registry"
 	"github.com/hackborn/onefunc/errors"
+	"github.com/hackborn/onefunc/pipeline"
 )
 
 func init() {
+	// Register the filesystem
+	pipeline.RegisterFs("sqliteref", refFs)
+
 	// Register the factory
 	const sqlite = "sqlite"
 	const driverName = "ref/" + sqlite
@@ -57,19 +58,9 @@ func init() {
 }
 
 func addGraphs(m map[string]graphs.Entry) {
-	entries, err := graphsFs.ReadDir("graphs")
-	if err != nil {
-		log.Fatal("init err: ", err)
-	}
-
-	for _, entry := range entries {
-		name := entry.Name()
-		ext := filepath.Ext(name)
-		if strings.ToLower(ext) == ".txt" {
-			name = strings.TrimSuffix(name, ext)
-			path := filepath.Join("graphs", entry.Name())
-			m[name] = graphs.Entry{Graph: graphs.NewReadFileFunc(path, graphsFs)}
-		}
+	entries, _ := graphs.ReadEntries(graphsFs, "graphs/*.txt")
+	for k, v := range entries {
+		m[k] = v
 	}
 }
 
@@ -82,6 +73,9 @@ func newOpenFunc(f registry.Factory) func() error {
 
 //go:embed graphs/*
 var graphsFs embed.FS
+
+//go:embed ref/*
+var refFs embed.FS
 
 //go:embed ref/ref_const.go
 var refConstGo string

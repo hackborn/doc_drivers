@@ -3,6 +3,9 @@ package graphs
 import (
 	"io"
 	"io/fs"
+	"path"
+	"path/filepath"
+	"strings"
 )
 
 func Entries() map[string]Entry {
@@ -13,6 +16,22 @@ func Entries() map[string]Entry {
 		m[k] = v
 	}
 	return m
+}
+
+// ReadEntries reads a collection of entries from an FS.
+func ReadEntries(fsys fs.FS, glob string) (map[string]Entry, error) {
+	matches, err := fs.Glob(fsys, glob)
+	if err != nil {
+		return nil, err
+	}
+	ans := make(map[string]Entry)
+	for _, match := range matches {
+		name := path.Base(match)
+		ext := filepath.Ext(name)
+		name = strings.TrimSuffix(name, ext)
+		ans[name] = Entry{Graph: NewReadFileFunc(match, fsys)}
+	}
+	return ans, nil
 }
 
 // NewReadFileFunc answers a StringFunc based on reading

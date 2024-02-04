@@ -3,8 +3,6 @@ package graphs
 import (
 	"embed"
 	"log"
-	"path/filepath"
-	"strings"
 )
 
 func init() {
@@ -13,20 +11,11 @@ func init() {
 
 // initEntries makes an entry for every graph file in resources/.
 func initEntries() {
-	direntries, err := resourcesFs.ReadDir("resources")
+	newEntries, err := ReadEntries(resourcesFs, "resources/*.txt")
 	if err != nil {
 		log.Fatal("init err: ", err)
 	}
-
-	for _, entry := range direntries {
-		name := entry.Name()
-		ext := filepath.Ext(name)
-		if strings.ToLower(ext) == ".txt" {
-			name = strings.TrimSuffix(name, ext)
-			path := filepath.Join("resources", entry.Name())
-			entries[name] = Entry{Graph: NewReadFileFunc(path, resourcesFs)}
-		}
-	}
+	entries = newEntries
 }
 
 //go:embed resources/*

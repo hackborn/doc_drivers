@@ -10,7 +10,7 @@ import (
 	"github.com/hackborn/onefunc/pipeline"
 )
 
-func newRunDocDriverNode(docDriverPrefix string) pipeline.Node {
+func newRunDocDriverNode(docDriverPrefix string) pipeline.Runner {
 	n := &runDocDriverNode{docDriverPrefix: docDriverPrefix}
 	n.fn = n.makeReports()
 	return n
@@ -25,9 +25,6 @@ type runDocDriverNode struct {
 }
 
 func (n *runDocDriverNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
-	if state.Flush {
-		return nil, nil
-	}
 	f, ok := registry.Find(n.Backend)
 	if !ok {
 		return nil, fmt.Errorf("No backend named \"%v\"", n.Backend)
