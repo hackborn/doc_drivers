@@ -1,3 +1,3 @@
 graph (
-    load(Fs=sqliteref, Glob="sqliteref/ref_*.go") -> template(Prefix=_tox)
+    load(Fs=sqliteref, Glob="ref/ref_*.go") -> regexp(Target="Content.Name", Expr="(^(ref_))|((.go)$)") -> template(Prefix=_tox)
 )

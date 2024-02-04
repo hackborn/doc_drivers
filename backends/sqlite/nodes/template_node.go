@@ -33,13 +33,14 @@ type templateNode struct {
 func (n *templateNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
 	output := &pipeline.RunOutput{}
 	eb := &errors.FirstBlock{}
+	fmt.Println("template in pins", len(input.Pins))
 	for _, pin := range input.Pins {
 		switch p := pin.Payload.(type) {
 		case *pipeline.ContentData:
 			eb.AddError(n.runContentPin(p, output))
 		}
 	}
-	fmt.Println("template out")
+	fmt.Println("template out pins", len(output.Pins))
 	for _, pin := range output.Pins {
 		fmt.Println("pin", pin.Name)
 		switch p := pin.Payload.(type) {
