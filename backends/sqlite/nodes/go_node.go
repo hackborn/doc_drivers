@@ -102,10 +102,9 @@ func (n *goNode) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructD
 }
 
 func (n *goNode) makeTemplates(vars map[string]any, output *pipeline.RunOutput) error {
-	templatesName := "sqlitetemplates"
-	templatesFs, ok := pipeline.FindFs(templatesName)
+	templatesFs, ok := pipeline.FindFs(TemplateFsName)
 	if !ok {
-		return fmt.Errorf("go node: No FS for name \"%v\"", templatesName)
+		return fmt.Errorf("go node: No FS for name \"%v\"", TemplateFsName)
 	}
 
 	eb := &errors.FirstBlock{}

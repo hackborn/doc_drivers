@@ -9,20 +9,8 @@
 *.dylib
 cmd/driverutil/driverutil
 cmd/driverutil/driverutil.exe
-cmd/makeDriver/makeDriver
-cmd/makeDriver/makeDriver.exe
-cmd/makeTemplates/makeTemplates
-cmd/makeTemplates/makeTemplates.exe
-cmd/run/run
-cmd/run/run.exe
 
 # Almost everything in data directories
-cmd/makeDriver/data/*
-!cmd/makeDriver/data/README.md
-cmd/makeTemplates/data/*
-!cmd/makeTemplates/data/README.md
-sqlite/data/*
-!sqlite/data/README.md
 backends/sqlite/data/*
 !backends/sqlite/data/README.md
 

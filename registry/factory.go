@@ -20,9 +20,6 @@ type Factory struct {
 	// NewGenerated generates a new doc driver based on the generated driver.
 	NewGenerated NewDriverFunc
 
-	// Clients can add additional processing when generating templates.
-	ProcessTemplate ProcessTemplateFunc
-
 	graphEntries map[string]graphs.Entry
 	graphNames   []string
 }

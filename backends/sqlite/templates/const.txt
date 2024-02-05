@@ -24,6 +24,6 @@ const (
 
 var (
 	{{.Prefix}}Definitions = map[string]string{
-        {{range .Tabledefs}}`{{.Name}}`: `{{.Statements}}`,{{end}}
+{{range .Tabledefs}}`{{.Name}}`: `{{.Statements}}`,{{end}}
 	}
 )

@@ -1,6 +1,8 @@
 package nodes
 
 const (
+	TemplateFsName = formatSqlite + "templates"
+
 	formatSqlite = "sqlite"
 
 	definitionKey = "def"

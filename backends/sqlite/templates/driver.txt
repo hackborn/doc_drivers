@@ -26,8 +26,8 @@ func (d *{{.Prefix}}Driver) Open(dataSourceName string) (doc.Driver, error) {
 	db, err := sql.Open(d.sqlDriverName, dataSourceName)
 	eb.AddError(err)
 	eb.AddError(d.runDefinitions(db))
-	if err != nil {
-		return nil, err
+	if eb.Err != nil {
+		return nil, eb.Err
 	}
 	f := doc.FormatWithDefaults({{.Prefix}}NewFormat())
 	return &{{.Prefix}}Driver{db: db, format: f}, nil

@@ -1,5 +1,10 @@
 graph (
-    load(Fs=sqliteref, Glob="ref/ref_*.go")
+    load(Fs="sqliteref", Glob="ref/ref_*.go")
     -> regexp(Target="Content.Name", Expr="(^(ref_))|((.go)$)")
-    -> template(Prefix=_tox)
+    -> template(Prefix="_tox")
+    -> save(Path="$save")
+)
+
+env (
+    $save="$pathroot/backends/sqlite/templates",
 )
