@@ -6,7 +6,6 @@ import (
 	"go/format"
 	"io/fs"
 	"path"
-	"reflect"
 	"strings"
 	"text/template"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
+	"github.com/hackborn/doc_drivers/registry"
 	"github.com/hackborn/onefunc/errors"
 	"github.com/hackborn/onefunc/pipeline"
 )
@@ -161,12 +161,9 @@ func (n *goNode) makeVars() (map[string]any, error) {
 		return nil, fmt.Errorf("Requires package name (set Pkg= on node)")
 	}
 
-	// {{.package}}, {{.toxPackage}}, {{.prefix}}
-	// {{range .tabledefs}}`{{.name}}`: `{{.statements}}`,{{end}}
-
 	m := make(map[string]any)
 	m["Package"] = n.Pkg
-	m["ToxPackage"] = reflect.TypeOf(pipeline.ContentData{}).PkgPath()
+	m["UtilPackage"] = registry.UtilPackageName
 	m["Prefix"] = n.Prefix
 	var tableDefs []TableDef
 	for k, v := range n.definitions {

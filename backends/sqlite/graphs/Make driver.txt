@@ -1,6 +1,6 @@
 graph (
     load(Glob=$load)
-    -> struct(Tag=tox)
+    -> struct(Tag="doc")
     -> go(Pkg=$pkg, Prefix=$prefix)
     -> save(Path=$save)
 )

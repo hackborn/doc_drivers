@@ -5,5 +5,5 @@ import (
 )
 
 func NewDriver(name string) doc.Driver {
-	return &_toxDriver{sqlDriverName: name}
+	return &_refDriver{sqlDriverName: name}
 }

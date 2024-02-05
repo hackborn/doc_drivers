@@ -12,13 +12,13 @@ import (
 	ofstrings "github.com/hackborn/onefunc/strings"
 )
 
-type _toxDriver struct {
+type _refDriver struct {
 	db            *sql.DB
 	sqlDriverName string
 	format        doc.Format
 }
 
-func (d *_toxDriver) Open(dataSourceName string) (doc.Driver, error) {
+func (d *_refDriver) Open(dataSourceName string) (doc.Driver, error) {
 	eb := &errors.FirstBlock{}
 	db, err := sql.Open(d.sqlDriverName, dataSourceName)
 	eb.AddError(err)
@@ -26,11 +26,11 @@ func (d *_toxDriver) Open(dataSourceName string) (doc.Driver, error) {
 	if eb.Err != nil {
 		return nil, eb.Err
 	}
-	f := doc.FormatWithDefaults(_toxNewFormat())
-	return &_toxDriver{db: db, format: f}, nil
+	f := doc.FormatWithDefaults(_refNewFormat())
+	return &_refDriver{db: db, format: f}, nil
 }
 
-func (d *_toxDriver) Close() error {
+func (d *_refDriver) Close() error {
 	db := d.db
 	d.db = nil
 	if db != nil {
@@ -39,13 +39,13 @@ func (d *_toxDriver) Close() error {
 	return nil
 }
 
-func (d *_toxDriver) Format() doc.Format {
+func (d *_refDriver) Format() doc.Format {
 	return d.format
 }
 
-func (d *_toxDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional, error) {
+func (d *_refDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional, error) {
 	eb := &errors.FirstBlock{}
-	meta, ok := _toxMetadatas[a.TypeName()]
+	meta, ok := _refMetadatas[a.TypeName()]
 	if !ok {
 		return nil, fmt.Errorf("missing metadata for \"%v\"", a.TypeName())
 	}
@@ -54,16 +54,16 @@ func (d *_toxDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional,
 		return nil, fmt.Errorf("missing primary key metadata for \"%v\"", a.TypeName())
 	}
 
-	statement := _toxSetSql
+	statement := _refSetSql
 	handler := &fieldsAndValuesHandler{}
 	ca1 := ofstrings.CompileArgs{Quote: "", Separator: ", ", Eb: eb}
-	ca2 := ofstrings.CompileArgs{Quote: _toxQuoteSz, Separator: ", ", Eb: eb}
+	ca2 := ofstrings.CompileArgs{Quote: _refQuoteSz, Separator: ", ", Eb: eb}
 	extract.From(req.ItemAny(), extract.NewChain(meta.FieldsToTags(), handler))
-	s := strings.ReplaceAll(statement, _toxFieldsVar, ofstrings.Compile(ca1, handler.fields...))
-	s = strings.ReplaceAll(s, _toxValuesVar, ofstrings.Compile(ca2, handler.values...))
-	s = strings.ReplaceAll(s, _toxFieldValuesVar, makeExcludedFieldValues(eb, handler.fields))
-	s = strings.ReplaceAll(s, _toxTableVar, meta.table)
-	s = strings.ReplaceAll(s, _toxKeysVar, ofstrings.CompileStrings(ca1, keys.tags...))
+	s := strings.ReplaceAll(statement, _refFieldsVar, ofstrings.Compile(ca1, handler.fields...))
+	s = strings.ReplaceAll(s, _refValuesVar, ofstrings.Compile(ca2, handler.values...))
+	s = strings.ReplaceAll(s, _refFieldValuesVar, makeExcludedFieldValues(eb, handler.fields))
+	s = strings.ReplaceAll(s, _refTableVar, meta.table)
+	s = strings.ReplaceAll(s, _refKeysVar, ofstrings.CompileStrings(ca1, keys.tags...))
 	if eb.Err != nil {
 		return nil, eb.Err
 	}
@@ -75,9 +75,9 @@ func (d *_toxDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional,
 	return nil, nil
 }
 
-func (d *_toxDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, error) {
+func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, error) {
 	eb := &errors.FirstBlock{}
-	meta, ok := _toxMetadatas[a.TypeName()]
+	meta, ok := _refMetadatas[a.TypeName()]
 	if !ok {
 		return nil, fmt.Errorf("missing metadata for \"%v\"", a.TypeName())
 	}
@@ -124,8 +124,8 @@ func (d *_toxDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, er
 	return nil, nil
 }
 
-func (d *_toxDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Optional, error) {
-	meta, ok := _toxMetadatas[a.TypeName()]
+func (d *_refDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Optional, error) {
+	meta, ok := _refMetadatas[a.TypeName()]
 	if !ok {
 		return nil, fmt.Errorf("missing metadata for \"%v\"", a.TypeName())
 	}
@@ -148,9 +148,9 @@ func (d *_toxDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Opt
 		expr = s
 	}
 
-	s := _toxDelSql
-	s = strings.ReplaceAll(s, _toxTableVar, meta.table)
-	s = strings.ReplaceAll(s, _toxKeyValuesVar, expr)
+	s := _refDelSql
+	s = strings.ReplaceAll(s, _refTableVar, meta.table)
+	s = strings.ReplaceAll(s, _refKeyValuesVar, expr)
 	// fmt.Println("delete statemet", s)
 
 	if _, err := d.db.Exec(s); err != nil {
@@ -159,8 +159,8 @@ func (d *_toxDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Opt
 	return nil, nil
 }
 
-func (s *_toxDriver) runDefinitions(db *sql.DB) error {
-	for _, v := range _toxDefinitions {
+func (s *_refDriver) runDefinitions(db *sql.DB) error {
+	for _, v := range _refDefinitions {
 		if _, err := db.Exec(v); err != nil {
 			return err
 		}

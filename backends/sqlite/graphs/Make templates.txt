@@ -1,7 +1,7 @@
 graph (
     load(Fs="sqliteref", Glob="ref/ref_*.go")
     -> regexp(Target="Content.Name", Expr="(^(ref_))|((.go)$)")
-    -> template(Prefix="_tox")
+    -> template(Prefix="_ref")
     -> save(Path="$save")
 )
 

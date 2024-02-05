@@ -1,2 +1,2 @@
 # doc_drivers
-WIP. Drivers for doc / tox
+WIP. Utility that generates drivers for [hackborn/doc](https://github.com/hackborn/doc)

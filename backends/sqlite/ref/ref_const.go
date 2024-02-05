@@ -4,26 +4,26 @@ package sqliterefdriver
 // do not modify
 
 const (
-	_toxKeysVar        = "$KEYS$"
-	_toxKeyValuesVar   = "$KEYVALUES$"
-	_toxFieldsVar      = "$FIELDS$"
-	_toxTableVar       = "$TABLE$"
-	_toxValuesVar      = "$VALUES$"
-	_toxFieldValuesVar = "$FIELDVALUES$"
+	_refKeysVar        = "$KEYS$"
+	_refKeyValuesVar   = "$KEYVALUES$"
+	_refFieldsVar      = "$FIELDS$"
+	_refTableVar       = "$TABLE$"
+	_refValuesVar      = "$VALUES$"
+	_refFieldValuesVar = "$FIELDVALUES$"
 
-	_toxAndKeyword      = "AND"
-	_toxAndKeywordWS    = " AND "
-	_toxEqualsKeyword   = "="
-	_toxEqualsKeywordWS = " = "
+	_refAndKeyword      = "AND"
+	_refAndKeywordWS    = " AND "
+	_refEqualsKeyword   = "="
+	_refEqualsKeywordWS = " = "
 
-	_toxQuoteSz = string(rune('\''))
+	_refQuoteSz = string(rune('\''))
 
-	_toxSetSql = `INSERT INTO $TABLE$ ($FIELDS$) VALUES($VALUES$) ON CONFLICT($KEYS$) DO UPDATE SET $FIELDVALUES$;`
-	_toxDelSql = `DELETE FROM $TABLE$ WHERE ($KEYVALUES$);`
+	_refSetSql = `INSERT INTO $TABLE$ ($FIELDS$) VALUES($VALUES$) ON CONFLICT($KEYS$) DO UPDATE SET $FIELDVALUES$;`
+	_refDelSql = `DELETE FROM $TABLE$ WHERE ($KEYVALUES$);`
 )
 
 var (
-	_toxDefinitions = map[string]string{
+	_refDefinitions = map[string]string{
 		// Begin tabledefs
 		`Company`: `DROP TABLE IF EXISTS Company;
 CREATE TABLE IF NOT EXISTS Company (

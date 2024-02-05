@@ -11,28 +11,28 @@ import (
 	ofstrings "github.com/hackborn/onefunc/strings"
 )
 
-// _toxNewFormat answers a new Format for the driver,
+// _refNewFormat answers a new Format for the driver,
 // containing the formatting rules for translating
 // expressions.
-func _toxNewFormat() doc.Format {
+func _refNewFormat() doc.Format {
 	keywords := map[string]string{
 		doc.AndKeyword:    " AND ",
 		doc.AssignKeyword: " = ",
 		doc.OrKeyword:     " OR ",
 	}
-	return &_toxFormat{keywords: keywords}
+	return &_refFormat{keywords: keywords}
 }
 
-type _toxFormat struct {
+type _refFormat struct {
 	keywords map[string]string
 }
 
-func (f *_toxFormat) Keyword(s string) string {
+func (f *_refFormat) Keyword(s string) string {
 	s, _ = f.keywords[s]
 	return s
 }
 
-func (f *_toxFormat) Value(v interface{}) (string, error) {
+func (f *_refFormat) Value(v interface{}) (string, error) {
 	s := fmt.Sprintf("%v", v)
 	switch v.(type) {
 	case string:
@@ -87,7 +87,7 @@ func whereClause(req doc.GetRequest) (string, error) {
 
 // getTagsAndFields extracts the tag names from the request and returns
 // a slice of the tags with their associated fields.
-func getTagsAndFields(meta *_toxMetadata, req doc.GetRequest) ([]string, []string) {
+func getTagsAndFields(meta *_refMetadata, req doc.GetRequest) ([]string, []string) {
 	if req.Fields == nil {
 		return meta.tags, meta.fields
 	}

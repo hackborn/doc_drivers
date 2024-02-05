@@ -6,8 +6,8 @@ const (
 
 	definitionKey = "def"
 
-	templateDatestampKey  = "{{.Datestamp}}"
-	templatePrefixKey     = "{{.Prefix}}"
-	templatePackageKey    = "{{.Package}}"
-	templateToxPackageKey = "{{.ToxPackage}}"
+	templateDatestampKey   = "{{.Datestamp}}"
+	templatePrefixKey      = "{{.Prefix}}"
+	templatePackageKey     = "{{.Package}}"
+	templateUtilPackageKey = "{{.UtilPackage}}"
 )
