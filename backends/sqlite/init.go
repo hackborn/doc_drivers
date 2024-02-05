@@ -19,6 +19,7 @@ import (
 func init() {
 	// Register the filesystem
 	pipeline.RegisterFs("sqliteref", refFs)
+	pipeline.RegisterFs("sqlitetemplates", templatesFs)
 
 	// Register the factory
 	const sqlite = "sqlite"
@@ -43,12 +44,6 @@ func init() {
 	f.Name = sqlite
 	f.DriverName = driverName
 	f.DbPath = dbpath
-	f.ReferenceFiles = map[string]string{
-		"const":    refConstGo,
-		"driver":   refDriverGo,
-		"fn":       refFnGo,
-		"metadata": refMetadataGo,
-	}
 	f.NewRef = refFn
 	f.NewGenerated = genFn
 	f.ProcessTemplate = makeTemplates
@@ -74,17 +69,8 @@ func newOpenFunc(f registry.Factory) func() error {
 //go:embed graphs/*
 var graphsFs embed.FS
 
+//go:embed templates
+var templatesFs embed.FS
+
 //go:embed ref/*
 var refFs embed.FS
-
-//go:embed ref/ref_const.go
-var refConstGo string
-
-//go:embed ref/ref_driver.go
-var refDriverGo string
-
-//go:embed ref/ref_fn.go
-var refFnGo string
-
-//go:embed ref/ref_metadata.go
-var refMetadataGo string

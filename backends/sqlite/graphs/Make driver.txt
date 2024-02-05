@@ -1,5 +1,8 @@
 graph (
-    load(Glob=$load) -> struct(Tag=tox) -> go(Pkg=$pkg, Prefix=$prefix) -> save(Path=$save)
+    load(Glob=$load)
+    -> struct(Tag=tox)
+    -> go(Pkg=$pkg, Prefix=$prefix)
+    -> save(Path=$save)
 )
 
 env (

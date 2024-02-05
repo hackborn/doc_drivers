@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"path/filepath"
+	"io/fs"
+	"path"
 	"reflect"
 	"strings"
 	"text/template"
@@ -101,23 +102,25 @@ func (n *goNode) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructD
 }
 
 func (n *goNode) makeTemplates(vars map[string]any, output *pipeline.RunOutput) error {
-	eb := &errors.FirstBlock{}
-	//	parent := filepath.Join("templates", n.Format)
-	parent := "templates"
-	entries, err := templatesFs.ReadDir(parent)
-	if err != nil {
-		return err
+	templatesName := "sqlitetemplates"
+	templatesFs, ok := pipeline.FindFs(templatesName)
+	if !ok {
+		return fmt.Errorf("go node: No FS for name \"%v\"", templatesName)
 	}
 
-	for _, entry := range entries {
-		d, err := templatesFs.ReadFile(filepath.Join(parent, entry.Name()))
+	eb := &errors.FirstBlock{}
+	matches, err := fs.Glob(templatesFs, "templates/*.txt")
+	eb.AddError(err)
+
+	for _, match := range matches {
+		d, err := fs.ReadFile(templatesFs, match)
 		eb.AddError(err)
 		b, err := n.runTemplate(string(d), vars)
 		eb.AddError(err)
 		b, err = n.runFormat(b)
 		eb.AddError(err)
 		if err == nil {
-			name := n.fileName(filepath.Base(entry.Name()), ".go")
+			name := n.fileName(path.Base(match), ".go")
 			output.Pins = append(output.Pins, pipeline.Pin{Payload: &pipeline.ContentData{Name: name, Data: string(b)}})
 		}
 	}
@@ -146,7 +149,7 @@ func (n *goNode) fileName(base, format string) string {
 	}
 
 	// Trim the extension
-	base = base[:len(base)-len(filepath.Ext(base))]
+	base = base[:len(base)-len(path.Ext(base))]
 
 	return prefix + base + format
 }

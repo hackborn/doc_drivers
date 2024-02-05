@@ -1,8 +1,6 @@
 package nodes
 
 import (
-	"embed"
-
 	"github.com/hackborn/onefunc/pipeline"
 )
 
@@ -17,6 +15,3 @@ func RegisterNodes() {
 		return newTemplateNode()
 	})
 }
-
-//go:embed templates
-var templatesFs embed.FS

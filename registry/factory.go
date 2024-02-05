@@ -14,10 +14,6 @@ type Factory struct {
 
 	Open OpenFunc
 
-	// ReferenceFiles is any source code files that will be used as
-	// references to create the tox template files.
-	ReferenceFiles map[string]string
-
 	// NewRef is a function to generate a new doc driver instance based on the reference driver.
 	NewRef NewDriverFunc
 
