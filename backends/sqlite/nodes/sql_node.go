@@ -10,7 +10,7 @@ import (
 	ofstrings "github.com/hackborn/onefunc/strings"
 )
 
-func newSqlNode() pipeline.Runner {
+func newSqlNode() pipeline.Node {
 	n := &sqlNode{Format: formatSqlite}
 	// Make functions
 	n.makes = []makeSqlPinFunc{

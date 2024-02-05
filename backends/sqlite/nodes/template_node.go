@@ -9,7 +9,7 @@ import (
 	"github.com/hackborn/onefunc/pipeline"
 )
 
-func newTemplateNode() pipeline.Runner {
+func newTemplateNode() pipeline.Node {
 	mapped := make(map[string]string)
 	n := &templateNode{mapped: mapped}
 	// Process functions

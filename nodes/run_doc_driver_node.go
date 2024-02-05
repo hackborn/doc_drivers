@@ -10,7 +10,7 @@ import (
 	"github.com/hackborn/onefunc/pipeline"
 )
 
-func newRunDocDriverNode(docDriverPrefix string) pipeline.Runner {
+func newRunDocDriverNode(docDriverPrefix string) pipeline.Node {
 	n := &runDocDriverNode{docDriverPrefix: docDriverPrefix}
 	n.fn = n.makeReports()
 	return n

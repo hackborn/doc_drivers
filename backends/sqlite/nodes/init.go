@@ -7,13 +7,13 @@ import (
 )
 
 func RegisterNodes() {
-	pipeline.RegisterNode("go", func() pipeline.Runner {
+	pipeline.RegisterNode("go", func() pipeline.Node {
 		return newGoNode()
 	})
-	pipeline.RegisterNode("sql", func() pipeline.Runner {
+	pipeline.RegisterNode("sql", func() pipeline.Node {
 		return newSqlNode()
 	})
-	pipeline.RegisterNode("template", func() pipeline.Runner {
+	pipeline.RegisterNode("template", func() pipeline.Node {
 		return newTemplateNode()
 	})
 }

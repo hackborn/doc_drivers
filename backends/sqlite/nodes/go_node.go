@@ -17,7 +17,7 @@ import (
 	"github.com/hackborn/onefunc/pipeline"
 )
 
-func newGoNode() pipeline.Runner {
+func newGoNode() pipeline.Node {
 	caser := cases.Title(language.English)
 	structs := make(map[string]*pipeline.StructData)
 	d := make(map[string]string)
