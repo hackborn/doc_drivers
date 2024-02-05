@@ -11,7 +11,7 @@ import (
 )
 
 func newSqlNode() pipeline.Node {
-	n := &sqlNode{Format: formatSqlite}
+	n := &sqlNode{Format: FormatSqlite}
 	// Make functions
 	n.makes = []makeSqlPinFunc{
 		n.makeDefinitionPin,

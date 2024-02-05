@@ -23,7 +23,7 @@ func newGoNode() pipeline.Node {
 	structs := make(map[string]*pipeline.StructData)
 	d := make(map[string]string)
 	// Currently sqlite is the only supported format, so I'll make it a default
-	return &goNode{Format: formatSqlite,
+	return &goNode{Format: FormatSqlite,
 		caser:       caser,
 		definitions: d,
 		structs:     structs}
@@ -74,7 +74,7 @@ func (n *goNode) Flush(state *pipeline.State) (*pipeline.RunOutput, error) {
 func (n *goNode) runStructPin(state *pipeline.State, pin *pipeline.StructData) error {
 	n.structs[pin.Name] = pin
 	switch n.Format {
-	case formatSqlite:
+	case FormatSqlite:
 		return n.runStructPinSqlite(state, pin)
 	default:
 		return fmt.Errorf("go node: Unknown format \"%v\"", n.Format)

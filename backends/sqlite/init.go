@@ -22,19 +22,7 @@ func init() {
 	pipeline.RegisterFs(nodes.TemplateFsName, templatesFs)
 
 	// Register the factory
-	const sqlite = "sqlite"
-	const driverName = "ref/" + sqlite
-	refFn := func() doc.Driver {
-		return sqliterefdriver.NewDriver(sqlite)
-	}
-	genFn := func() doc.Driver {
-		return sqlitegendriver.NewDriver(sqlite)
-	}
-	// Make this accessible to nodes without going through this driver.
-	// This raises the question of why I have these factory functions at all.
-	// Unless I see a downside to it, I'll probably remove them.
-	doc.Register(driverName, refFn())
-	doc.Register("gen/"+sqlite, genFn())
+	const sqlite = nodes.FormatSqlite
 
 	// Database path is relative to the commands. Relocate it to myself.
 	dbpath := filepath.Join("..", "..", "backends", "sqlite", "data", "db")
@@ -42,10 +30,7 @@ func init() {
 	addGraphs(graphEntries)
 	f := registry.NewFactory(graphEntries)
 	f.Name = sqlite
-	f.DriverName = driverName
 	f.DbPath = dbpath
-	f.NewRef = refFn
-	f.NewGenerated = genFn
 	f.Open = newOpenFunc(f)
 
 	errors.Panic(registry.Register(f))
@@ -61,6 +46,17 @@ func addGraphs(m map[string]graphs.Entry) {
 func newOpenFunc(f registry.Factory) func() error {
 	return func() error {
 		nodes.RegisterNodes()
+
+		// Make drivers accessible to nodes without going through the backend
+		refFn := func() doc.Driver {
+			return sqliterefdriver.NewDriver(nodes.FormatSqlite)
+		}
+		genFn := func() doc.Driver {
+			return sqlitegendriver.NewDriver(nodes.FormatSqlite)
+		}
+		doc.Register("ref/"+nodes.FormatSqlite, refFn())
+		doc.Register("gen/"+nodes.FormatSqlite, genFn())
+
 		return nil
 	}
 }

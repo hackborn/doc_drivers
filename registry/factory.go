@@ -8,17 +8,15 @@ import (
 )
 
 type Factory struct {
-	Name       string
-	DriverName string
-	DbPath     string
+	// Name is a unique key for this factory.
+	Name string
 
+	// DbPath is the location of the database for
+	// any doc drivers.
+	DbPath string
+
+	// Open gets called when the factory is opened.
 	Open OpenFunc
-
-	// NewRef is a function to generate a new doc driver instance based on the reference driver.
-	NewRef NewDriverFunc
-
-	// NewGenerated generates a new doc driver based on the generated driver.
-	NewGenerated NewDriverFunc
 
 	graphEntries map[string]graphs.Entry
 	graphNames   []string
