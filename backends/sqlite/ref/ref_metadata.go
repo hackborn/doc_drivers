@@ -55,36 +55,3 @@ func _refMakeMetadataMap(keys, values []string) map[string]string {
 	}
 	return c
 }
-
-var (
-	_refMetadatas = map[string]*_refMetadata{
-		// Begin metadata
-		"Company": &_refMetadata{
-			table:  "Company",
-			tags:   []string{"id", "name", "val", "fy"},
-			fields: []string{"Id", "Name", "Value", "FoundedYear"},
-			keys: map[string]*_refKeyMetadata{
-				"": &_refKeyMetadata{
-					tags:   []string{"id"},
-					fields: []string{"Id"},
-				},
-				"b": &_refKeyMetadata{
-					tags:   []string{"name"},
-					fields: []string{"Name"},
-				},
-			},
-		},
-		"Filing": &_refMetadata{
-			table:  "Filing",
-			tags:   []string{"ticker", "end", "form", "val", "units", "fy"},
-			fields: []string{"Ticker", "EndDate", "Form", "Value", "Units", "FiscalYear"},
-			keys: map[string]*_refKeyMetadata{
-				"": &_refKeyMetadata{
-					tags:   []string{"ticker", "end", "form"},
-					fields: []string{"Ticker", "EndDate", "Form"},
-				},
-			},
-		},
-		// End metadata
-	}
-)

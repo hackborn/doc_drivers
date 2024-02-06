@@ -128,7 +128,7 @@ func (n *templateNode) processTableDefs(c *makeTemplateContent) error {
 }
 
 func (n *templateNode) processMetadata(c *makeTemplateContent) error {
-	if c.Name != "metadata" {
+	if c.Name != "const" {
 		return nil
 	}
 	s, e, ok := findContentRange(&c.Content, beginMetadata, endMetadata)

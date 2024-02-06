@@ -10,4 +10,6 @@ type Company struct {
 	Value int64 `json:"val" doc:"val"`
 	// Year the company was founded.
 	FoundedYear int `json:"fy" doc:"fy, key(c,1)"`
+	// Do not include this in the driver.
+	Skip int `doc:"-"`
 }

@@ -135,23 +135,6 @@ func (n *goNode) makeMetadataValue(pin *pipeline.StructData, eb errors.Block) st
 		w.WriteString("\t\t\t\t},\n")
 	}
 	w.WriteString("\t\t\t},\n")
-	/*
-		"Company": &_refMetadata{
-			table:  "Company",
-			tags:   []string{"id", "name", "val", "fy"},
-			fields: []string{"Id", "Name", "Value", "FoundedYear"},
-			keys: map[string]*_refKeyMetadata{
-				"": &_refKeyMetadata{
-					tags:   []string{"id"},
-					fields: []string{"Id"},
-				},
-				"b": &_refKeyMetadata{
-					tags:   []string{"name"},
-					fields: []string{"Name"},
-				},
-			},
-		},
-	*/
 	return ofstrings.String(w)
 }
 
@@ -229,6 +212,6 @@ func (n *goNode) makeVars() (map[string]any, error) {
 		metadatas = append(metadatas, MetadataDef{Name: k, Value: v})
 	}
 	m["Metadata"] = metadatas
-	m["Datestamp"] = time.Now().Format(time.RFC822)
+	m["Datestamp"] = time.Now().Format(time.DateOnly)
 	return m, nil
 }

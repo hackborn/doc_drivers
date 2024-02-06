@@ -58,9 +58,3 @@ func {{.Prefix}}MakeMetadataMap(keys, values []string) map[string]string {
 	}
 	return c
 }
-
-var (
-	{{.Prefix}}Metadatas = map[string]*{{.Prefix}}Metadata{
-{{range .Metadata}}`{{.Name}}`: {{.Value}}},{{end}}
-	}
-)

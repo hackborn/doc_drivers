@@ -9,10 +9,10 @@ import (
 
 	oferrors "github.com/hackborn/onefunc/errors"
 	"github.com/hackborn/onefunc/pipeline"
+	ofslices "github.com/hackborn/onefunc/slices"
 )
 
-// metadata is parallel to pipeline.StructData,
-// except with parsed tags.
+// metadata is parallel to pipeline.StructData, except with parsed tags.
 type metadata struct {
 	Name   string
 	Fields []structField
@@ -20,48 +20,54 @@ type metadata struct {
 }
 
 func (d metadata) TagNames() []string {
-	names := make([]string, 0, len(d.Fields))
-	for _, f := range d.Fields {
-		names = append(names, f.Tag)
-	}
-	return names
+	return ofslices.ArrayFrom(d.Fields, func(f structField) string {
+		return f.Tag
+	})
 }
 
 func (d metadata) FieldNames() []string {
-	names := make([]string, 0, len(d.Fields))
-	for _, f := range d.Fields {
-		names = append(names, f.Field)
-	}
-	return names
+	return ofslices.ArrayFrom(d.Fields, func(f structField) string {
+		return f.Field
+	})
 }
 
 func (d metadata) KeyTagNames(key string) []string {
-	if fields, ok := d.Keys[key]; ok {
-		v := make([]string, 0, len(fields))
-		for _, f := range fields {
-			v = append(v, f.Tag)
-		}
-		return v
-	} else {
-		return []string{}
-	}
+	return ofslices.ArrayFrom(d.Keys[key], func(key structKey) string {
+		return key.Tag
+	})
 }
 
 func (d metadata) KeyFieldNames(key string) []string {
-	if fields, ok := d.Keys[key]; ok {
-		v := make([]string, 0, len(fields))
-		for _, f := range fields {
-			v = append(v, f.Field)
-		}
-		return v
-	} else {
-		return []string{}
+	return ofslices.ArrayFrom(d.Keys[key], func(key structKey) string {
+		return key.Field
+	})
+}
+
+// PrimaryKey answers the "primary" key in the key map. This is
+// just defined as the first key in alphabetic order.
+func (d metadata) PrimaryKey() (string, bool) {
+	if len(d.Keys) < 1 {
+		return "", false
 	}
+	first := true
+	key := ""
+	for k, _ := range d.Keys {
+		if first {
+			key = k
+			first = false
+		} else {
+			if strings.Compare(k, key) < 0 {
+				key = k
+			}
+		}
+	}
+	return key, true
 }
 
 type structField struct {
 	Tag   string
 	Field string
+	Type  string
 }
 
 type structKey struct {
@@ -77,6 +83,8 @@ type parsedKey struct {
 	fieldName string
 }
 
+// makeMetadata answers the results of parsing the struct
+// data, including the tags, into a parallel structure.
 func makeMetadata(pin *pipeline.StructData) (metadata, error) {
 	eb := oferrors.FirstBlock{}
 	sd := metadata{Name: pin.Name}
@@ -84,6 +92,14 @@ func makeMetadata(pin *pipeline.StructData) (metadata, error) {
 	keys := make(map[string][]*parsedKey)
 	for _, f := range pin.Fields {
 		sf, pk := makeStructField(f, &eb)
+		// Skip indicator
+		if sf.Tag == "-" {
+			continue
+		}
+		// Default field name indicator.
+		if sf.Tag == "" {
+			sf.Tag = sf.Field
+		}
 		sd.Fields = append(sd.Fields, sf)
 		if pk != nil {
 			pk.tagName = sf.Tag
@@ -116,6 +132,8 @@ func makeMetadata(pin *pipeline.StructData) (metadata, error) {
 	return sd, eb.Err
 }
 
+// makeStructField parses a single field in the struct, including
+// metadata.
 func makeStructField(f pipeline.StructField, eb oferrors.Block) (structField, *parsedKey) {
 	var lexer scanner.Scanner
 	lexer.Init(strings.NewReader(f.Tag))
@@ -146,13 +164,13 @@ func makeStructField(f pipeline.StructField, eb oferrors.Block) (structField, *p
 		}
 		h.HandleToken(kt, eb)
 	}
-	sd := structField{Tag: h.nameHandler.name, Field: f.Name}
+	sd := structField{Tag: h.nameHandler.name, Field: f.Name, Type: f.Type}
 	var key *parsedKey = nil
 	if h.keyHandler.exists {
 		key = &parsedKey{name: h.keyHandler.keyName, position: h.keyHandler.keyPosition}
 	} else if h.identHandler.name == "key" {
 		// This happens when we have a dangling key definition, i.e. nothing
-		// after the "key" keyword. An unnamed key.
+		// after the "key" keyword. For example, an unnamed key.
 		key = &parsedKey{}
 	}
 	return sd, key

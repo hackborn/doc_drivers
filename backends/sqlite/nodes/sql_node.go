@@ -50,29 +50,48 @@ func (n *sqlNode) makeDefinitionPin(state *pipeline.State, pin *pipeline.StructD
 	sb.WriteString(fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", pin.Name))
 	sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", pin.Name))
 
+	md, err := makeMetadata(pin)
+	block.AddError(err)
+
 	// Iterate over struct fields
-	for _, field := range pin.Fields {
-		// The name should be the tag name, but default to field name
-		pt := newSqlParsedTag(field)
-		fieldName := pt.name
-		if fieldName == "" {
-			fieldName = field.Name
-		}
-
+	for _, field := range md.Fields {
 		// Convert Go type to SQL data type
-		fieldType := field.Type
-		sqlType := convertGoTypeToSQLType(fieldType)
-
-		sb.WriteString(fmt.Sprintf("\t%s %s,\n", fieldName, sqlType))
+		sqlType := convertGoTypeToSQLType(field.Type)
+		sb.WriteString(fmt.Sprintf("\t%s %s,\n", field.Tag, sqlType))
 	}
 
-	keyNames := sqlKeyNames(pin)
-	if len(keyNames) > 0 {
+	// XXX Figure out how sqlite does non-primary keys
+	if pk, ok := md.PrimaryKey(); ok {
+		keyNames := md.KeyTagNames(pk)
 		ca := ofstrings.CompileArgs{Separator: ","}
 		keys := ofstrings.CompileStrings(ca, keyNames...)
 		sb.WriteString("\tPRIMARY KEY (" + keys + ")\n")
 	}
 
+	/*
+		// Iterate over struct fields
+		for _, field := range pin.Fields {
+			// The name should be the tag name, but default to field name
+			pt := newSqlParsedTag(field)
+			fieldName := pt.name
+			if fieldName == "" {
+				fieldName = field.Name
+			}
+
+			// Convert Go type to SQL data type
+			fieldType := field.Type
+			sqlType := convertGoTypeToSQLType(fieldType)
+
+			sb.WriteString(fmt.Sprintf("\t%s %s,\n", fieldName, sqlType))
+		}
+
+		keyNames := sqlKeyNames(pin)
+		if len(keyNames) > 0 {
+			ca := ofstrings.CompileArgs{Separator: ","}
+			keys := ofstrings.CompileStrings(ca, keyNames...)
+			sb.WriteString("\tPRIMARY KEY (" + keys + ")\n")
+		}
+	*/
 	sb.WriteString(");")
 	content := &pipeline.ContentData{Name: pin.Name,
 		Data:   ofstrings.String(sb),

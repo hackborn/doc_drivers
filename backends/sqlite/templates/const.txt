@@ -26,4 +26,8 @@ var (
 	{{.Prefix}}Definitions = map[string]string{
 {{range .Tabledefs}}`{{.Name}}`: `{{.Statements}}`,{{end}}
 	}
+
+	{{.Prefix}}Metadatas = map[string]*{{.Prefix}}Metadata{
+{{range .Metadata}}`{{.Name}}`: {{.Value}}},{{end}}
+	}
 )
