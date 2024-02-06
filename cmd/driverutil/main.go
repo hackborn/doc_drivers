@@ -36,7 +36,7 @@ func run(graph string, f registry.Factory) error {
 	}
 	// Supply the env vars
 	env := makeEnv(p.Env(), f)
-	_, err = pipeline.Run(p, nil, env)
+	_, err = pipeline.RunExpr(graph, nil, env)
 	return err
 }
 

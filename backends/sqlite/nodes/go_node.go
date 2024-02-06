@@ -16,16 +16,19 @@ import (
 	"github.com/hackborn/doc_drivers/registry"
 	"github.com/hackborn/onefunc/errors"
 	"github.com/hackborn/onefunc/pipeline"
+	ofstrings "github.com/hackborn/onefunc/strings"
 )
 
 func newGoNode() pipeline.Node {
 	caser := cases.Title(language.English)
 	structs := make(map[string]*pipeline.StructData)
 	d := make(map[string]string)
+	m := make(map[string]string)
 	// Currently sqlite is the only supported format, so I'll make it a default
 	return &goNode{Format: FormatSqlite,
 		caser:       caser,
 		definitions: d,
+		metadata:    m,
 		structs:     structs}
 }
 
@@ -46,6 +49,7 @@ type goNode struct {
 	// waiting to get flushed.
 	structs     map[string]*pipeline.StructData
 	definitions map[string]string
+	metadata    map[string]string
 }
 
 func (n *goNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
@@ -87,6 +91,15 @@ func (n *goNode) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructD
 	if err != nil {
 		return err
 	}
+
+	// Metadata
+	eb := errors.FirstBlock{}
+	n.metadata[pin.Name] = n.makeMetadataValue(pin, &eb)
+	if eb.Err != nil {
+		return eb.Err
+	}
+
+	// Table definitions
 	for _, pin := range output.Pins {
 		switch p := pin.Payload.(type) {
 		case *pipeline.ContentData:
@@ -99,6 +112,47 @@ func (n *goNode) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructD
 		}
 	}
 	return nil
+}
+
+func (n *goNode) makeMetadataValue(pin *pipeline.StructData, eb errors.Block) string {
+	w := ofstrings.GetWriter(eb)
+	defer ofstrings.PutWriter(w)
+	ca := ofstrings.CompileArgs{Quote: "\"", Separator: ",", Eb: eb}
+	md, err := makeMetadata(pin)
+	eb.AddError(err)
+	fn := md.FieldNames()
+	tn := md.TagNames()
+
+	w.WriteString("&" + n.Prefix + "Metadata{\n")
+	w.WriteString("\t\t\ttable: \"" + pin.Name + "\",\n")
+	w.WriteString("\t\t\ttags: []string{" + ofstrings.CompileStrings(ca, tn...) + "},\n")
+	w.WriteString("\t\t\tfields: []string{" + ofstrings.CompileStrings(ca, fn...) + "},\n")
+	w.WriteString("\t\t\tkeys: map[string]*" + n.Prefix + "KeyMetadata{\n")
+	for k, _ := range md.Keys {
+		w.WriteString("\t\t\t\t\"" + k + "\": &" + n.Prefix + "KeyMetadata{\n")
+		w.WriteString("\t\t\t\t\ttags: []string{" + ofstrings.CompileStrings(ca, md.KeyTagNames(k)...) + "},\n")
+		w.WriteString("\t\t\t\t\tfields: []string{" + ofstrings.CompileStrings(ca, md.KeyFieldNames(k)...) + "},\n")
+		w.WriteString("\t\t\t\t},\n")
+	}
+	w.WriteString("\t\t\t},\n")
+	/*
+		"Company": &_refMetadata{
+			table:  "Company",
+			tags:   []string{"id", "name", "val", "fy"},
+			fields: []string{"Id", "Name", "Value", "FoundedYear"},
+			keys: map[string]*_refKeyMetadata{
+				"": &_refKeyMetadata{
+					tags:   []string{"id"},
+					fields: []string{"Id"},
+				},
+				"b": &_refKeyMetadata{
+					tags:   []string{"name"},
+					fields: []string{"Name"},
+				},
+			},
+		},
+	*/
+	return ofstrings.String(w)
 }
 
 func (n *goNode) makeTemplates(vars map[string]any, output *pipeline.RunOutput) error {
@@ -170,6 +224,11 @@ func (n *goNode) makeVars() (map[string]any, error) {
 		tableDefs = append(tableDefs, TableDef{Name: k, Statements: v})
 	}
 	m["Tabledefs"] = tableDefs
+	var metadatas []MetadataDef
+	for k, v := range n.metadata {
+		metadatas = append(metadatas, MetadataDef{Name: k, Value: v})
+	}
+	m["Metadata"] = metadatas
 	m["Datestamp"] = time.Now().Format(time.RFC822)
 	return m, nil
 }

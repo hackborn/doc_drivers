@@ -58,6 +58,7 @@ func _refMakeMetadataMap(keys, values []string) map[string]string {
 
 var (
 	_refMetadatas = map[string]*_refMetadata{
+		// Begin metadata
 		"Company": &_refMetadata{
 			table:  "Company",
 			tags:   []string{"id", "name", "val", "fy"},
@@ -84,5 +85,6 @@ var (
 				},
 			},
 		},
+		// End metadata
 	}
 )

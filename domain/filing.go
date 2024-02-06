@@ -2,11 +2,11 @@ package domain
 
 // struct Filing represents a single filing for a company.
 type Filing struct {
-	Ticker string `doc:"ticker, key:a"`
+	Ticker string `doc:"ticker, key(,0)"`
 	// End date of the filing period.
-	EndDate string `json:"end" doc:"end, key:b"`
+	EndDate string `json:"end" doc:"end, key(,1)"`
 	// Form used in the filing
-	Form string `json:"form" doc:"form, key:c"`
+	Form string `json:"form" doc:"form, key (,2)"`
 	// Amount of filing.
 	Value int64 `json:"val" doc:"val"`
 	// Units used for the value (i.e. "usd").

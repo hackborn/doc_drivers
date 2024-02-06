@@ -7,6 +7,11 @@ import (
 	"github.com/hackborn/doc_drivers/registry"
 )
 
+type MetadataDef struct {
+	Name  string
+	Value string
+}
+
 type TableDef struct {
 	Name       string
 	Statements string

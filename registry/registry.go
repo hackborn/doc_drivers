@@ -7,14 +7,18 @@ import (
 	"github.com/hackborn/onefunc/lock"
 )
 
+// Register a new backend.
 func Register(f Factory) error {
 	return reg.Register(f)
 }
 
+// Open a backend. The backend will register any
+// required dependencies (nodes, filesystems, etc.)
 func Open(name string) (Factory, error) {
 	return reg.Open(name)
 }
 
+// Find a backend.
 func Find(name string) (Factory, bool) {
 	return reg.Find(name)
 }

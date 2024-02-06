@@ -61,31 +61,6 @@ func {{.Prefix}}MakeMetadataMap(keys, values []string) map[string]string {
 
 var (
 	{{.Prefix}}Metadatas = map[string]*{{.Prefix}}Metadata{
-		"Company": &{{.Prefix}}Metadata{
-			table:  "Company",
-			tags:   []string{"id", "name", "val", "fy"},
-			fields: []string{"Id", "Name", "Value", "FoundedYear"},
-			keys: map[string]*{{.Prefix}}KeyMetadata{
-				"": &{{.Prefix}}KeyMetadata{
-					tags:   []string{"id"},
-					fields: []string{"Id"},
-				},
-				"b": &{{.Prefix}}KeyMetadata{
-					tags:   []string{"name"},
-					fields: []string{"Name"},
-				},
-			},
-		},
-		"Filing": &{{.Prefix}}Metadata{
-			table:  "Filing",
-			tags:   []string{"ticker", "end", "form", "val", "units", "fy"},
-			fields: []string{"Ticker", "EndDate", "Form", "Value", "Units", "FiscalYear"},
-			keys: map[string]*{{.Prefix}}KeyMetadata{
-				"": &{{.Prefix}}KeyMetadata{
-					tags:   []string{"ticker", "end", "form"},
-					fields: []string{"Ticker", "EndDate", "Form"},
-				},
-			},
-		},
+{{range .Metadata}}`{{.Name}}`: {{.Value}}},{{end}}
 	}
 )
