@@ -8,8 +8,8 @@ import (
 	ofstrings "github.com/hackborn/onefunc/strings"
 )
 
-func newSqlNode(tablePrefix string) pipeline.Node {
-	n := &sqlNode{Format: FormatSqlite, TablePrefix: tablePrefix}
+func newSqlNode(tablePrefix string, dropTables bool) pipeline.Node {
+	n := &sqlNode{Format: FormatSqlite, TablePrefix: tablePrefix, DropTables: dropTables}
 	// Make functions
 	n.makes = []makeSqlPinFunc{
 		n.makeDefinitionPin,
@@ -20,6 +20,7 @@ func newSqlNode(tablePrefix string) pipeline.Node {
 type sqlNode struct {
 	Format      string
 	TablePrefix string
+	DropTables  bool
 	makes       []makeSqlPinFunc
 }
 
@@ -48,8 +49,9 @@ func (n *sqlNode) makeDefinitionPin(state *pipeline.State, pin *pipeline.StructD
 	md, err := makeMetadata(pin, n.TablePrefix)
 	block.AddError(err)
 
-	// Debugging
-	sb.WriteString(fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", md.Name))
+	if n.DropTables {
+		sb.WriteString(fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", md.Name))
+	}
 	sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", md.Name))
 
 	// Iterate over struct fields

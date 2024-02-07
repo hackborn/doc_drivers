@@ -41,6 +41,11 @@ type goNode struct {
 	// used during driver development.
 	TablePrefix string
 
+	// If true, the existing tables will be dropped and
+	// created anew with each driver run. Only used during
+	// development.
+	DropTables bool
+
 	caser cases.Caser
 }
 
@@ -102,7 +107,7 @@ func (n *goNode) runStructPin(nodeState *goNodeState, state *pipeline.State, pin
 }
 
 func (n *goNode) runStructPinSqlite(nodeState *goNodeState, state *pipeline.State, pin *pipeline.StructData) error {
-	sn := newSqlNode(n.TablePrefix)
+	sn := newSqlNode(n.TablePrefix, n.DropTables)
 	output, err := sn.Run(state, pipeline.NewInput(pipeline.Pin{Payload: pin}))
 	if err != nil {
 		return err

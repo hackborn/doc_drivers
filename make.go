@@ -21,6 +21,7 @@ func MakeDriver(settings MakeDriverSettings) error {
 		"$pkg":         settings.Pkg,
 		"$prefix":      settings.Prefix,
 		"$tableprefix": "",
+		"$droptables":  false,
 	}
 	_, err = pipeline.RunExpr(graph, nil, env)
 	return err

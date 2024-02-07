@@ -64,13 +64,13 @@ Id int `doc:"id, key"`
 Name string `doc:"name, key(compound)"`
 Date int `doc:"date, key(compound)"`
 ```
-The database will have keys of `id` and `name, date`
+The database will have keys of `id` and `name, date`.
 
 4. Keys within a key group can be ordered by supplying a number after the name.
 ```
 Name string `doc:"name, key(compound, 1)"`
 Date int `doc:"date, key(compound, 0)"`
 ```
-The database will have a key of `date, name`
+The database will have a key of `date, name`.
 
 5. Key rules vary depending on the underlying storage model and level of support in the driver. Currently the only special rule is that the "primary" key is the first key group name, alphabetically. The easiest way to specify a primary key is to leave the key name blank.

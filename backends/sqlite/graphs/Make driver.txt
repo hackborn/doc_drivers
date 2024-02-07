@@ -1,7 +1,7 @@
 graph (
     load(Glob=$load)
     -> struct(Tag="doc")
-    -> go(Pkg=$pkg, Prefix=$prefix, TablePrefix=$tableprefix)
+    -> go(Pkg=$pkg, Prefix=$prefix, TablePrefix=$tableprefix, DropTables=$droptables)
     -> save(Path=$save)
 )
 
@@ -11,4 +11,5 @@ env (
     $pkg="sqlitegendriver",
     $prefix="gen"
     $tableprefix=""
+    $droptables=false
 )
