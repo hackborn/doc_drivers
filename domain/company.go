@@ -12,4 +12,6 @@ type Company struct {
 	FoundedYear int `json:"fy" doc:"fy, key(c,1)"`
 	// Do not include this in the driver.
 	Skip int `doc:"-"`
+	// Private fields are treated as table specs
+	_table int `doc:"company"`
 }

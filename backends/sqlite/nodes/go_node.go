@@ -21,15 +21,9 @@ import (
 
 func newGoNode() pipeline.Node {
 	caser := cases.Title(language.English)
-	structs := make(map[string]*pipeline.StructData)
-	d := make(map[string]string)
-	m := make(map[string]string)
 	// Currently sqlite is the only supported format, so I'll make it a default
 	return &goNode{Format: FormatSqlite,
-		caser:       caser,
-		definitions: d,
-		metadata:    m,
-		structs:     structs}
+		caser: caser}
 }
 
 type goNode struct {
@@ -44,7 +38,9 @@ type goNode struct {
 	Prefix string
 
 	caser cases.Caser
+}
 
+type goNodeState struct {
 	// Building -- this is the generated data that is
 	// waiting to get flushed.
 	structs     map[string]*pipeline.StructData
@@ -52,19 +48,35 @@ type goNode struct {
 	metadata    map[string]string
 }
 
+func getGoNodeState(key pipeline.Node, state *pipeline.State) *goNodeState {
+	ns := pipeline.GetNodeState[goNodeState](key, state)
+	if ns.structs == nil {
+		ns.structs = make(map[string]*pipeline.StructData)
+	}
+	if ns.definitions == nil {
+		ns.definitions = make(map[string]string)
+	}
+	if ns.metadata == nil {
+		ns.metadata = make(map[string]string)
+	}
+	return ns
+}
+
 func (n *goNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
+	nodeState := getGoNodeState(n, state)
 	eb := &errors.FirstBlock{}
 	for _, pin := range input.Pins {
 		switch p := pin.Payload.(type) {
 		case *pipeline.StructData:
-			eb.AddError(n.runStructPin(state, p))
+			eb.AddError(n.runStructPin(nodeState, state, p))
 		}
 	}
 	return nil, eb.Err
 }
 
 func (n *goNode) Flush(state *pipeline.State) (*pipeline.RunOutput, error) {
-	vars, err := n.makeVars()
+	nodeState := getGoNodeState(n, state)
+	vars, err := n.makeVars(nodeState)
 	if err != nil {
 		return nil, fmt.Errorf("go node err: %w", err)
 	}
@@ -75,17 +87,17 @@ func (n *goNode) Flush(state *pipeline.State) (*pipeline.RunOutput, error) {
 	return output, err
 }
 
-func (n *goNode) runStructPin(state *pipeline.State, pin *pipeline.StructData) error {
-	n.structs[pin.Name] = pin
+func (n *goNode) runStructPin(nodeState *goNodeState, state *pipeline.State, pin *pipeline.StructData) error {
+	nodeState.structs[pin.Name] = pin
 	switch n.Format {
 	case FormatSqlite:
-		return n.runStructPinSqlite(state, pin)
+		return n.runStructPinSqlite(nodeState, state, pin)
 	default:
 		return fmt.Errorf("go node: Unknown format \"%v\"", n.Format)
 	}
 }
 
-func (n *goNode) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructData) error {
+func (n *goNode) runStructPinSqlite(nodeState *goNodeState, state *pipeline.State, pin *pipeline.StructData) error {
 	sn := newSqlNode()
 	output, err := sn.Run(state, pipeline.NewInput(pipeline.Pin{Payload: pin}))
 	if err != nil {
@@ -94,7 +106,7 @@ func (n *goNode) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructD
 
 	// Metadata
 	eb := errors.FirstBlock{}
-	n.metadata[pin.Name] = n.makeMetadataValue(pin, &eb)
+	nodeState.metadata[pin.Name] = n.makeMetadataValue(pin, &eb)
 	if eb.Err != nil {
 		return eb.Err
 	}
@@ -104,10 +116,10 @@ func (n *goNode) runStructPinSqlite(state *pipeline.State, pin *pipeline.StructD
 		switch p := pin.Payload.(type) {
 		case *pipeline.ContentData:
 			if pin.Name == definitionKey {
-				if _, ok := n.definitions[p.Name]; ok {
+				if _, ok := nodeState.definitions[p.Name]; ok {
 					return fmt.Errorf("togo supplied multiple definitions with the same name (%v)", p.Name)
 				}
-				n.definitions[p.Name] = p.Data
+				nodeState.definitions[p.Name] = p.Data
 			}
 		}
 	}
@@ -190,7 +202,7 @@ func (n *goNode) fileName(base, format string) string {
 	return prefix + base + format
 }
 
-func (n *goNode) makeVars() (map[string]any, error) {
+func (n *goNode) makeVars(nodeState *goNodeState) (map[string]any, error) {
 	if n.Format == "" {
 		return nil, fmt.Errorf("Requires format (set Format= on node)")
 	}
@@ -203,12 +215,12 @@ func (n *goNode) makeVars() (map[string]any, error) {
 	m["UtilPackage"] = registry.UtilPackageName
 	m["Prefix"] = n.Prefix
 	var tableDefs []TableDef
-	for k, v := range n.definitions {
+	for k, v := range nodeState.definitions {
 		tableDefs = append(tableDefs, TableDef{Name: k, Statements: v})
 	}
 	m["Tabledefs"] = tableDefs
 	var metadatas []MetadataDef
-	for k, v := range n.metadata {
+	for k, v := range nodeState.metadata {
 		metadatas = append(metadatas, MetadataDef{Name: k, Value: v})
 	}
 	m["Metadata"] = metadatas
