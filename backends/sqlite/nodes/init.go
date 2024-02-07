@@ -8,9 +8,12 @@ func RegisterNodes() {
 	pipeline.RegisterNode("go", func() pipeline.Node {
 		return newGoNode()
 	})
-	pipeline.RegisterNode("sql", func() pipeline.Node {
-		return newSqlNode()
-	})
+	// Only used from inside the go node
+	/*
+		pipeline.RegisterNode("sql", func() pipeline.Node {
+			return newSqlNode()
+		})
+	*/
 	pipeline.RegisterNode("template", func() pipeline.Node {
 		return newTemplateNode()
 	})

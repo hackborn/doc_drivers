@@ -51,6 +51,9 @@ func makeEnv(env map[string]any, f registry.Factory) map[string]any {
 		}
 	}
 	env["$backend"] = f.Name
+	// This is only used to generate the test driver, so
+	// should be safe to always use this.
+	env["$tableprefix"] = "gen"
 	return env
 }
 

@@ -16,10 +16,11 @@ func MakeDriver(settings MakeDriverSettings) error {
 		return err
 	}
 	env := map[string]any{
-		"$load":   settings.LoadGlob,
-		"$save":   settings.SavePath,
-		"$pkg":    settings.Pkg,
-		"$prefix": settings.Prefix,
+		"$load":        settings.LoadGlob,
+		"$save":        settings.SavePath,
+		"$pkg":         settings.Pkg,
+		"$prefix":      settings.Prefix,
+		"$tableprefix": "",
 	}
 	_, err = pipeline.RunExpr(graph, nil, env)
 	return err

@@ -14,6 +14,7 @@ import (
 
 // metadata is parallel to pipeline.StructData, except with parsed tags.
 type metadata struct {
+	// The table name
 	Name   string
 	Fields []structField
 	Keys   map[string][]structKey
@@ -85,10 +86,10 @@ type parsedKey struct {
 
 // makeMetadata answers the results of parsing the struct
 // data, including the tags, into a parallel structure.
-func makeMetadata(pin *pipeline.StructData) (metadata, error) {
+func makeMetadata(pin *pipeline.StructData, tablePrefix string) (metadata, error) {
 	eb := oferrors.FirstBlock{}
-	sd := metadata{Name: pin.Name}
-	sd.Keys = make(map[string][]structKey)
+	md := metadata{Name: pin.Name}
+	md.Keys = make(map[string][]structKey)
 	keys := make(map[string][]*parsedKey)
 	for _, f := range pin.Fields {
 		sf, pk := makeStructField(f, &eb)
@@ -100,7 +101,7 @@ func makeMetadata(pin *pipeline.StructData) (metadata, error) {
 		if sf.Tag == "" {
 			sf.Tag = sf.Field
 		}
-		sd.Fields = append(sd.Fields, sf)
+		md.Fields = append(md.Fields, sf)
 		if pk != nil {
 			pk.tagName = sf.Tag
 			pk.fieldName = sf.Field
@@ -127,9 +128,25 @@ func makeMetadata(pin *pipeline.StructData) (metadata, error) {
 		for _, vv := range v {
 			value = append(value, structKey{Tag: vv.tagName, Field: vv.fieldName})
 		}
-		sd.Keys[k] = value
+		md.Keys[k] = value
 	}
-	return sd, eb.Err
+	makeTableMetadata(pin, &md, &eb)
+	md.Name = tablePrefix + md.Name
+	return md, eb.Err
+}
+
+func makeTableMetadata(pin *pipeline.StructData, md *metadata, eb oferrors.Block) {
+	for _, f := range pin.UnexportedFields {
+		// The tag was filtered for my "doc" keyword, so any non-empty
+		// tag will be a table specification
+		if f.Tag == "" {
+			continue
+		}
+		sf, _ := makeStructField(f, eb)
+		if sf.Tag != "" {
+			md.Name = sf.Tag
+		}
+	}
 }
 
 // makeStructField parses a single field in the struct, including

@@ -37,6 +37,10 @@ type goNode struct {
 	// Prefix to use for my generated types.
 	Prefix string
 
+	// Optional prefix to prepend to table names. Only
+	// used during driver development.
+	TablePrefix string
+
 	caser cases.Caser
 }
 
@@ -98,7 +102,7 @@ func (n *goNode) runStructPin(nodeState *goNodeState, state *pipeline.State, pin
 }
 
 func (n *goNode) runStructPinSqlite(nodeState *goNodeState, state *pipeline.State, pin *pipeline.StructData) error {
-	sn := newSqlNode()
+	sn := newSqlNode(n.TablePrefix)
 	output, err := sn.Run(state, pipeline.NewInput(pipeline.Pin{Payload: pin}))
 	if err != nil {
 		return err
@@ -130,13 +134,13 @@ func (n *goNode) makeMetadataValue(pin *pipeline.StructData, eb errors.Block) st
 	w := ofstrings.GetWriter(eb)
 	defer ofstrings.PutWriter(w)
 	ca := ofstrings.CompileArgs{Quote: "\"", Separator: ",", Eb: eb}
-	md, err := makeMetadata(pin)
+	md, err := makeMetadata(pin, n.TablePrefix)
 	eb.AddError(err)
 	fn := md.FieldNames()
 	tn := md.TagNames()
 
 	w.WriteString("&" + n.Prefix + "Metadata{\n")
-	w.WriteString("\t\t\ttable: \"" + pin.Name + "\",\n")
+	w.WriteString("\t\t\ttable: \"" + md.Name + "\",\n")
 	w.WriteString("\t\t\ttags: []string{" + ofstrings.CompileStrings(ca, tn...) + "},\n")
 	w.WriteString("\t\t\tfields: []string{" + ofstrings.CompileStrings(ca, fn...) + "},\n")
 	w.WriteString("\t\t\tkeys: map[string]*" + n.Prefix + "KeyMetadata{\n")

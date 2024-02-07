@@ -13,4 +13,6 @@ type Filing struct {
 	Units string `json:"units" doc:"units"`
 	// Fiscal year of the filing
 	FiscalYear int `json:"fy" doc:"fy"`
+	// Private fields are treated as table specs
+	_table int `doc:"filing"`
 }

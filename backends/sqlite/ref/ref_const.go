@@ -25,16 +25,16 @@ const (
 var (
 	_refDefinitions = map[string]string{
 		// Begin tabledefs
-		`Company`: `DROP TABLE IF EXISTS Company;
-CREATE TABLE IF NOT EXISTS Company (
+		`Company`: `DROP TABLE IF EXISTS refcompany;
+CREATE TABLE IF NOT EXISTS refcompany (
 	id VARCHAR(255),
 	name VARCHAR(255),
 	val INTEGER,
 	fy INTEGER,
 	PRIMARY KEY (id)
 );`,
-		`Filing`: `DROP TABLE IF EXISTS Filing;
-CREATE TABLE IF NOT EXISTS Filing (
+		`Filing`: `DROP TABLE IF EXISTS reffiling;
+CREATE TABLE IF NOT EXISTS reffiling (
 	ticker VARCHAR(255),
 	end VARCHAR(255),
 	form VARCHAR(255),
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS Filing (
 	_refMetadatas = map[string]*_refMetadata{
 		// Begin metadata
 		"Company": &_refMetadata{
-			table:  "Company",
+			table:  "refcompany",
 			tags:   []string{"id", "name", "val", "fy"},
 			fields: []string{"Id", "Name", "Value", "FoundedYear"},
 			keys: map[string]*_refKeyMetadata{
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS Filing (
 			},
 		},
 		"Filing": &_refMetadata{
-			table:  "Filing",
+			table:  "reffiling",
 			tags:   []string{"ticker", "end", "form", "val", "units", "fy"},
 			fields: []string{"Ticker", "EndDate", "Form", "Value", "Units", "FiscalYear"},
 			keys: map[string]*_refKeyMetadata{
