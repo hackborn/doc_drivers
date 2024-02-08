@@ -42,21 +42,82 @@ func (n *sqlNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline
 }
 
 func (n *sqlNode) makeDefinitionPin(state *pipeline.State, pin *pipeline.StructData) (pipeline.Pin, error) {
-	block := oferrors.FirstBlock{}
-	sb := ofstrings.GetWriter(&block)
-	defer ofstrings.PutWriter(sb)
+	eb := &oferrors.FirstBlock{}
+	//	sb := ofstrings.GetWriter(eb)
+	//	defer ofstrings.PutWriter(sb)
 
 	md, err := makeMetadata(pin, n.TablePrefix)
-	block.AddError(err)
+	eb.AddError(err)
 
+	cols := n.makeDefinitionCols(md, eb)
+	create := n.makeDefinitionCreate(md, eb)
+	def := cols + "\n" + create
+	/*
+		if n.DropTables {
+			sb.WriteString(fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", md.Name))
+		}
+		sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", md.Name))
+
+		// Iterate over struct fields
+		for _, field := range md.Fields {
+			// Convert Go type to SQL data type
+			sqlType := convertGoTypeToSQLType(field.Type)
+			sb.WriteString(fmt.Sprintf("\t%s %s,\n", field.Tag, sqlType))
+		}
+
+		// XXX Figure out how sqlite does non-primary keys
+		if pk, ok := md.PrimaryKey(); ok {
+			keyNames := md.KeyTagNames(pk)
+			ca := ofstrings.CompileArgs{Separator: ","}
+			keys := ofstrings.CompileStrings(ca, keyNames...)
+			sb.WriteString("\tPRIMARY KEY (" + keys + ")\n")
+		}
+
+		sb.WriteString(");")
+	*/
+
+	content := &pipeline.ContentData{Name: pin.Name,
+		Data:   def,
+		Format: n.Format,
+	}
+	return pipeline.Pin{Name: definitionKey, Payload: content}, eb.Err
+}
+
+func (n *sqlNode) makeDefinitionCols(md metadata, eb oferrors.Block) string {
+	sb := ofstrings.GetWriter(eb)
+	defer ofstrings.PutWriter(sb)
+
+	sb.WriteString("\tcols: []{{.Prefix}}SqlTableCol{\n")
+	for _, field := range md.Fields {
+		sqlType := convertGoTypeToSQLType(field.Type)
+		sb.WriteString(fmt.Sprintf("\t\t{`%s`, `%s`},\n", field.Tag, sqlType))
+	}
+
+	sb.WriteString("\t},")
+
+	/*
+		cols: []_refSqlTableCol{
+		{`id`, `VARCHAR(255)`},
+							{`name`, `VARCHAR(255)`},
+							{`val`, `INTEGER`},
+							{`fy`, `INTEGER`},
+						},
+	*/
+
+	return ofstrings.String(sb)
+}
+
+func (n *sqlNode) makeDefinitionCreate(md metadata, eb oferrors.Block) string {
+	sb := ofstrings.GetWriter(eb)
+	defer ofstrings.PutWriter(sb)
+
+	sb.WriteString("create: `")
 	if n.DropTables {
 		sb.WriteString(fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", md.Name))
 	}
 	sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", md.Name))
 
-	// Iterate over struct fields
 	for _, field := range md.Fields {
-		// Convert Go type to SQL data type
 		sqlType := convertGoTypeToSQLType(field.Type)
 		sb.WriteString(fmt.Sprintf("\t%s %s,\n", field.Tag, sqlType))
 	}
@@ -69,12 +130,9 @@ func (n *sqlNode) makeDefinitionPin(state *pipeline.State, pin *pipeline.StructD
 		sb.WriteString("\tPRIMARY KEY (" + keys + ")\n")
 	}
 
-	sb.WriteString(");")
-	content := &pipeline.ContentData{Name: pin.Name,
-		Data:   ofstrings.String(sb),
-		Format: n.Format,
-	}
-	return pipeline.Pin{Name: definitionKey, Payload: content}, block.Err
+	sb.WriteString(");`,")
+
+	return ofstrings.String(sb)
 }
 
 // convertGoTypeToSQLType converts a Go type to an SQL data type.

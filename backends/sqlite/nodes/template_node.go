@@ -175,7 +175,7 @@ func findContentRange(c *registry.Content, start, end string) (int, int, bool) {
 const (
 	beginTableDefs = `// Begin tabledefs`
 	endTableDefs   = `// End tabledefs`
-	tableDefsLine  = "{{range .Tabledefs}}`{{.Name}}`: `{{.Statements}}`,{{end}}"
+	tableDefsLine  = "{{range .Tabledefs}}`{{.Name}}`: {\n{{.Statements}}\n},{{end}}"
 
 	beginMetadata = `// Begin metadata`
 	endMetadata   = `// End metadata`

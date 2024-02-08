@@ -8,6 +8,7 @@ import (
 	"github.com/hackborn/doc"
 	"github.com/hackborn/onefunc/assign"
 	"github.com/hackborn/onefunc/errors"
+	oferrors "github.com/hackborn/onefunc/errors"
 	"github.com/hackborn/onefunc/extract"
 	ofstrings "github.com/hackborn/onefunc/strings"
 )
@@ -22,7 +23,7 @@ func (d *_refDriver) Open(dataSourceName string) (doc.Driver, error) {
 	eb := &errors.FirstBlock{}
 	db, err := sql.Open(d.sqlDriverName, dataSourceName)
 	eb.AddError(err)
-	eb.AddError(d.runDefinitions(db))
+	eb.AddError(d.syncTables(db))
 	if eb.Err != nil {
 		return nil, eb.Err
 	}
@@ -159,11 +160,10 @@ func (d *_refDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Opt
 	return nil, nil
 }
 
-func (s *_refDriver) runDefinitions(db *sql.DB) error {
-	for _, v := range _refDefinitions {
-		if _, err := db.Exec(v); err != nil {
-			return err
-		}
+func (s *_refDriver) syncTables(db *sql.DB) error {
+	eb := &oferrors.FirstBlock{}
+	for k, v := range _refMetadatas {
+		_refSqlSyncTable(db, k, v, eb)
 	}
-	return nil
+	return eb.Err
 }

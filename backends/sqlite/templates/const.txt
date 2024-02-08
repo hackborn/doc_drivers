@@ -23,8 +23,10 @@ const (
 )
 
 var (
-	{{.Prefix}}Definitions = map[string]string{
-{{range .Tabledefs}}`{{.Name}}`: `{{.Statements}}`,{{end}}
+	{{.Prefix}}TableDefs = map[string]{{.Prefix}}SqlTableDef{
+{{range .Tabledefs}}`{{.Name}}`: {
+{{.Statements}}
+},{{end}}
 	}
 
 	{{.Prefix}}Metadatas = map[string]*{{.Prefix}}Metadata{

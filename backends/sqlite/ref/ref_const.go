@@ -23,26 +23,44 @@ const (
 )
 
 var (
-	_refDefinitions = map[string]string{
+	_refTableDefs = map[string]_refSqlTableDef{
 		// Begin tabledefs
-		`Company`: `DROP TABLE IF EXISTS refcompany;
+		`Company`: {
+			cols: []_refSqlTableCol{
+				{`id`, `VARCHAR(255)`},
+				{`name`, `VARCHAR(255)`},
+				{`val`, `INTEGER`},
+				{`fy`, `INTEGER`},
+			},
+			create: `DROP TABLE IF EXISTS refcompany;
 CREATE TABLE IF NOT EXISTS refcompany (
-	id VARCHAR(255),
-	name VARCHAR(255),
-	val INTEGER,
-	fy INTEGER,
-	PRIMARY KEY (id)
+		id VARCHAR(255),
+		name VARCHAR(255),
+		val INTEGER,
+		fy INTEGER,
+		PRIMARY KEY (id)
 );`,
-		`Filing`: `DROP TABLE IF EXISTS reffiling;
+		},
+		`Filing`: {
+			cols: []_refSqlTableCol{
+				{`ticker`, `VARCHAR(255)`},
+				{`end`, `VARCHAR(255)`},
+				{`form`, `VARCHAR(255)`},
+				{`val`, `INTEGER`},
+				{`units`, `VARCHAR(255)`},
+				{`fy`, `INTEGER`},
+			},
+			create: `DROP TABLE IF EXISTS reffiling;
 CREATE TABLE IF NOT EXISTS reffiling (
-	ticker VARCHAR(255),
-	end VARCHAR(255),
-	form VARCHAR(255),
-	val INTEGER,
-	units VARCHAR(255),
-	fy INTEGER,
-	PRIMARY KEY (ticker, end, form)
+		ticker VARCHAR(255),
+		end VARCHAR(255),
+		form VARCHAR(255),
+		val INTEGER,
+		units VARCHAR(255),
+		fy INTEGER,
+		PRIMARY KEY (ticker, end, form)
 );`,
+		},
 		// End tabledefs
 	}
 

@@ -126,9 +126,10 @@ func (n *goNode) runStructPinSqlite(nodeState *goNodeState, state *pipeline.Stat
 		case *pipeline.ContentData:
 			if pin.Name == definitionKey {
 				if _, ok := nodeState.definitions[p.Name]; ok {
-					return fmt.Errorf("togo supplied multiple definitions with the same name (%v)", p.Name)
+					return fmt.Errorf("go node supplied multiple definitions with the same name (%v)", p.Name)
 				}
-				nodeState.definitions[p.Name] = p.Data
+				data := strings.ReplaceAll(p.Data, "{{.Prefix}}", n.Prefix)
+				nodeState.definitions[p.Name] = data
 			}
 		}
 	}
