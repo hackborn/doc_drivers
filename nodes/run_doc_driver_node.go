@@ -11,41 +11,57 @@ import (
 )
 
 func newRunDocDriverNode(docDriverPrefix string) pipeline.Node {
-	n := &runDocDriverNode{docDriverPrefix: docDriverPrefix}
+	n := &runDocDriverNode{}
+	n.docDriverPrefix = docDriverPrefix
 	n.fn = n.makeReports()
 	return n
 }
 
 type runDocDriverNode struct {
+	runDocDriverData
+
+	fn []runReportFunc
+}
+
+type runDocDriverData struct {
 	Verbose bool
 	Backend string
 
 	docDriverPrefix string
-	fn              []runReportFunc
 }
 
-func (n *runDocDriverNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
-	f, ok := registry.Find(n.Backend)
+func (d *runDocDriverData) docDriverName() string {
+	return d.docDriverPrefix + "/" + d.Backend
+}
+
+func (n *runDocDriverNode) Start(input pipeline.StartInput) error {
+	data := n.runDocDriverData
+	input.SetNodeData(&data)
+	return nil
+}
+
+func (n *runDocDriverNode) Run(state *pipeline.State, input pipeline.RunInput, output *pipeline.RunOutput) error {
+	data := state.NodeData.(*runDocDriverData)
+	f, ok := registry.Find(data.Backend)
 	if !ok {
-		return nil, fmt.Errorf("No backend named \"%v\"", n.Backend)
+		return fmt.Errorf("No backend named \"%v\"", data.Backend)
 	}
 
 	// Open the database
-	db, err := doc.Open(n.docDriverName(), f.DbPath)
+	db, err := doc.Open(data.docDriverName(), f.DbPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer db.Close()
 
-	return n.runReport(db)
+	return n.runReport(db, data, output)
 }
 
-func (n *runDocDriverNode) runReport(db *doc.DB) (*pipeline.RunOutput, error) {
-	output := &pipeline.RunOutput{}
+func (n *runDocDriverNode) runReport(db *doc.DB, data *runDocDriverData, output *pipeline.RunOutput) error {
 	report := &RunReportData{}
 	for _, fn := range n.fn {
 		e := fn(db)
-		if n.Verbose {
+		if data.Verbose {
 			sr := ""
 			if e.Response != nil {
 				resp, _ := json.Marshal(e.Response)
@@ -54,13 +70,13 @@ func (n *runDocDriverNode) runReport(db *doc.DB) (*pipeline.RunOutput, error) {
 			fmt.Println(e.Name, "resp", sr, "err", e.Err)
 		}
 		if e.Err != nil {
-			return nil, fmt.Errorf("Error for driver \"%v\" test \"%v\": %w", n.docDriverName(), e.Name, e.Err)
+			return fmt.Errorf("Error for driver \"%v\" test \"%v\": %w", data.docDriverName(), e.Name, e.Err)
 		}
 		report.Entries = append(report.Entries, e)
 	}
 
-	output.Pins = append(output.Pins, pipeline.Pin{Name: n.docDriverName(), Payload: report})
-	return output, nil
+	output.Pins = append(output.Pins, pipeline.Pin{Name: data.docDriverName(), Payload: report})
+	return nil
 }
 
 func (n *runDocDriverNode) makeReports() []runReportFunc {
@@ -116,10 +132,6 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 	}
 
 	return fn
-}
-
-func (n *runDocDriverNode) docDriverName() string {
-	return n.docDriverPrefix + "/" + n.Backend
 }
 
 type runReportFunc func(db *doc.DB) ReportEntry

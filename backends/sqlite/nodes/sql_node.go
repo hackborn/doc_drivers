@@ -9,7 +9,8 @@ import (
 )
 
 func newSqlNode(tablePrefix string, dropTables bool) pipeline.Node {
-	n := &sqlNode{Format: FormatSqlite, TablePrefix: tablePrefix, DropTables: dropTables}
+	n := &sqlNode{}
+	n.sqlNodeData = sqlNodeData{Format: FormatSqlite, TablePrefix: tablePrefix, DropTables: dropTables}
 	// Make functions
 	n.makes = []makeSqlPinFunc{
 		n.makeDefinitionPin,
@@ -18,67 +19,55 @@ func newSqlNode(tablePrefix string, dropTables bool) pipeline.Node {
 }
 
 type sqlNode struct {
+	sqlNodeData
+
+	makes []makeSqlPinFunc
+}
+
+type sqlNodeData struct {
 	Format      string
 	TablePrefix string
 	DropTables  bool
-	makes       []makeSqlPinFunc
 }
 
-func (n *sqlNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
-	output := &pipeline.RunOutput{}
+func (n *sqlNode) Start(input pipeline.StartInput) error {
+	data := n.sqlNodeData
+	input.SetNodeData(&data)
+	return nil
+}
+
+func (n *sqlNode) Run(state *pipeline.State, input pipeline.RunInput, output *pipeline.RunOutput) error {
+	data := state.NodeData.(*sqlNodeData)
 	for _, pin := range input.Pins {
 		switch p := pin.Payload.(type) {
 		case *pipeline.StructData:
 			for _, fn := range n.makes {
-				outpin, err := fn(state, p)
+				outpin, err := fn(data, state, p)
 				if err != nil {
-					return nil, err
+					return err
 				}
 				output.Pins = append(output.Pins, outpin)
 			}
 		}
 	}
-	return output, nil
+	return nil
 }
 
-func (n *sqlNode) makeDefinitionPin(state *pipeline.State, pin *pipeline.StructData) (pipeline.Pin, error) {
+func (n *sqlNode) makeDefinitionPin(data *sqlNodeData, state *pipeline.State, pin *pipeline.StructData) (pipeline.Pin, error) {
 	eb := &oferrors.FirstBlock{}
 	//	sb := ofstrings.GetWriter(eb)
 	//	defer ofstrings.PutWriter(sb)
 
-	md, err := makeMetadata(pin, n.TablePrefix)
+	md, err := makeMetadata(pin, data.TablePrefix)
 	eb.AddError(err)
 
 	cols := n.makeDefinitionCols(md, eb)
 	create := n.makeDefinitionCreate(md, eb)
 	def := cols + "\n" + create
-	/*
-		if n.DropTables {
-			sb.WriteString(fmt.Sprintf("DROP TABLE IF EXISTS %s;\n", md.Name))
-		}
-		sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", md.Name))
-
-		// Iterate over struct fields
-		for _, field := range md.Fields {
-			// Convert Go type to SQL data type
-			sqlType := convertGoTypeToSQLType(field.Type)
-			sb.WriteString(fmt.Sprintf("\t%s %s,\n", field.Tag, sqlType))
-		}
-
-		// XXX Figure out how sqlite does non-primary keys
-		if pk, ok := md.PrimaryKey(); ok {
-			keyNames := md.KeyTagNames(pk)
-			ca := ofstrings.CompileArgs{Separator: ","}
-			keys := ofstrings.CompileStrings(ca, keyNames...)
-			sb.WriteString("\tPRIMARY KEY (" + keys + ")\n")
-		}
-
-		sb.WriteString(");")
-	*/
 
 	content := &pipeline.ContentData{Name: pin.Name,
 		Data:   def,
-		Format: n.Format,
+		Format: data.Format,
 	}
 	return pipeline.Pin{Name: definitionKey, Payload: content}, eb.Err
 }
@@ -94,15 +83,6 @@ func (n *sqlNode) makeDefinitionCols(md metadata, eb oferrors.Block) string {
 	}
 
 	sb.WriteString("\t},")
-
-	/*
-		cols: []_refSqlTableCol{
-		{`id`, `VARCHAR(255)`},
-							{`name`, `VARCHAR(255)`},
-							{`val`, `INTEGER`},
-							{`fy`, `INTEGER`},
-						},
-	*/
 
 	return ofstrings.String(sb)
 }

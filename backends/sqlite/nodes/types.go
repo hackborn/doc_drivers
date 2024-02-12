@@ -19,12 +19,12 @@ type TableDef struct {
 
 type makeTemplateContent struct {
 	registry.Content
-	b         strings.Builder
-	nodeState *templateNodeState
+	b        strings.Builder
+	nodeData *templateNodeData
 }
 
-func newMakeTemplateContent(name, content string, ns *templateNodeState) *makeTemplateContent {
-	ic := &makeTemplateContent{nodeState: ns}
+func newMakeTemplateContent(name, content string, data *templateNodeData) *makeTemplateContent {
+	ic := &makeTemplateContent{nodeData: data}
 	ic.Name = name
 	ic.b.Grow(len(content) * 2)
 	scanner := bufio.NewScanner(strings.NewReader(content))

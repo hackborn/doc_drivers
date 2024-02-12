@@ -10,9 +10,10 @@ import (
 )
 
 type compareReportsNode struct {
+	_fake int
 }
 
-func (n *compareReportsNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
+func (n *compareReportsNode) Run(state *pipeline.State, input pipeline.RunInput, output *pipeline.RunOutput) error {
 	var refRun *RunReportData = nil
 	var genRun *RunReportData = nil
 	for _, pin := range input.Pins {
@@ -26,28 +27,27 @@ func (n *compareReportsNode) Run(state *pipeline.State, input pipeline.RunInput)
 		}
 	}
 	if refRun == nil {
-		return nil, fmt.Errorf("Missing input pin ref/*")
+		return fmt.Errorf("Missing input pin ref/*")
 	}
 	if genRun == nil {
-		return nil, fmt.Errorf("Missing input pin gen/*")
+		return fmt.Errorf("Missing input pin gen/*")
 	}
-	return n.compare(refRun, genRun)
+	return n.compare(refRun, genRun, output)
 }
 
-func (n *compareReportsNode) compare(refRun, genRun *RunReportData) (*pipeline.RunOutput, error) {
+func (n *compareReportsNode) compare(refRun, genRun *RunReportData, output *pipeline.RunOutput) error {
 	if len(refRun.Entries) < 1 || len(refRun.Entries) != len(genRun.Entries) {
-		return nil, fmt.Errorf("Missing report entries")
+		return fmt.Errorf("Missing report entries")
 	}
-	output := &pipeline.RunOutput{}
 	for i, re := range refRun.Entries {
 		ge := genRun.Entries[i]
 		err := n.compareEntries(re, ge)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	fmt.Println("ok")
-	return output, nil
+	return nil
 }
 
 func (n *compareReportsNode) compareEntries(refEntry, genEntry ReportEntry) error {

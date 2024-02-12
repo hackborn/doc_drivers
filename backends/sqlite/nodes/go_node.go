@@ -21,12 +21,19 @@ import (
 
 func newGoNode() pipeline.Node {
 	caser := cases.Title(language.English)
+	n := &goNode{caser: caser}
 	// Currently sqlite is the only supported format, so I'll make it a default
-	return &goNode{Format: FormatSqlite,
-		caser: caser}
+	n.Format = FormatSqlite
+	return n
 }
 
 type goNode struct {
+	goNodeSharedData
+
+	caser cases.Caser
+}
+
+type goNodeSharedData struct {
 	// Format of the driver I'm generating. Currently only sqlite is
 	// supported, so that's used as the default.
 	Format string
@@ -45,11 +52,11 @@ type goNode struct {
 	// created anew with each driver run. Only used during
 	// development.
 	DropTables bool
-
-	caser cases.Caser
 }
 
-type goNodeState struct {
+type goNodeData struct {
+	goNodeSharedData
+
 	// Building -- this is the generated data that is
 	// waiting to get flushed.
 	structs     map[string]*pipeline.StructData
@@ -57,65 +64,81 @@ type goNodeState struct {
 	metadata    map[string]string
 }
 
-func getGoNodeState(key pipeline.Node, state *pipeline.State) *goNodeState {
-	ns := pipeline.GetNodeState[goNodeState](key, state)
-	if ns.structs == nil {
-		ns.structs = make(map[string]*pipeline.StructData)
+func (n *goNodeData) fileName(base, format string) string {
+	prefix := strings.Trim(n.Prefix, "_")
+	if prefix != "" {
+		prefix += "_"
 	}
-	if ns.definitions == nil {
-		ns.definitions = make(map[string]string)
-	}
-	if ns.metadata == nil {
-		ns.metadata = make(map[string]string)
-	}
-	return ns
+
+	// Trim the extension
+	base = base[:len(base)-len(path.Ext(base))]
+
+	return prefix + base + format
 }
 
-func (n *goNode) Run(state *pipeline.State, input pipeline.RunInput) (*pipeline.RunOutput, error) {
-	nodeState := getGoNodeState(n, state)
+func (n *goNode) Start(input pipeline.StartInput) error {
+	data := goNodeData{}
+	data.goNodeSharedData = n.goNodeSharedData
+	data.structs = make(map[string]*pipeline.StructData)
+	data.definitions = make(map[string]string)
+	data.metadata = make(map[string]string)
+	input.SetNodeData(&data)
+	return nil
+}
+
+func (n *goNode) Run(state *pipeline.State, input pipeline.RunInput, output *pipeline.RunOutput) error {
+	data := state.NodeData.(*goNodeData)
 	eb := &errors.FirstBlock{}
 	for _, pin := range input.Pins {
 		switch p := pin.Payload.(type) {
 		case *pipeline.StructData:
-			eb.AddError(n.runStructPin(nodeState, state, p))
+			eb.AddError(n.runStructPin(data, state, p))
 		}
 	}
-	return nil, eb.Err
+	return eb.Err
 }
 
-func (n *goNode) Flush(state *pipeline.State) (*pipeline.RunOutput, error) {
-	nodeState := getGoNodeState(n, state)
-	vars, err := n.makeVars(nodeState)
+func (n *goNode) Flush(state *pipeline.State, output *pipeline.RunOutput) error {
+	data := state.NodeData.(*goNodeData)
+	vars, err := n.makeVars(data)
 	if err != nil {
-		return nil, fmt.Errorf("go node err: %w", err)
+		return fmt.Errorf("go node err: %w", err)
 	}
 
-	output := &pipeline.RunOutput{}
 	//	fmt.Println("vars", vars)
-	err = n.makeTemplates(vars, output)
-	return output, err
+	err = n.makeTemplates(data, vars, output)
+	return err
 }
 
-func (n *goNode) runStructPin(nodeState *goNodeState, state *pipeline.State, pin *pipeline.StructData) error {
-	nodeState.structs[pin.Name] = pin
-	switch n.Format {
+func (n *goNode) runStructPin(data *goNodeData, state *pipeline.State, pin *pipeline.StructData) error {
+	data.structs[pin.Name] = pin
+	switch data.Format {
 	case FormatSqlite:
-		return n.runStructPinSqlite(nodeState, state, pin)
+		return n.runStructPinSqlite(data, state, pin)
 	default:
-		return fmt.Errorf("go node: Unknown format \"%v\"", n.Format)
+		return fmt.Errorf("go node: Unknown format \"%v\"", data.Format)
 	}
 }
 
-func (n *goNode) runStructPinSqlite(nodeState *goNodeState, state *pipeline.State, pin *pipeline.StructData) error {
-	sn := newSqlNode(n.TablePrefix, n.DropTables)
-	output, err := sn.Run(state, pipeline.NewInput(pipeline.Pin{Payload: pin}))
+func (n *goNode) runStructPinSqlite(nodeData *goNodeData, state *pipeline.State, pin *pipeline.StructData) error {
+	/*
+		sn := newSqlNode(nodeData.TablePrefix, nodeData.DropTables)
+		output := &pipeline.RunOutput{}
+		err := sn.Run(state, pipeline.NewRunInput(pipeline.Pin{Payload: pin}), output)
+		if err != nil {
+			return err
+		}
+	*/
+	sn := newSqlNode(nodeData.TablePrefix, nodeData.DropTables)
+	output := &pipeline.RunOutput{}
+	err := pipeline.RunNode(sn, pipeline.NewRunInput(pipeline.Pin{Payload: pin}), output)
 	if err != nil {
 		return err
 	}
 
 	// Metadata
 	eb := errors.FirstBlock{}
-	nodeState.metadata[pin.Name] = n.makeMetadataValue(pin, &eb)
+	nodeData.metadata[pin.Name] = n.makeMetadataValue(nodeData, pin, &eb)
 	if eb.Err != nil {
 		return eb.Err
 	}
@@ -125,33 +148,33 @@ func (n *goNode) runStructPinSqlite(nodeState *goNodeState, state *pipeline.Stat
 		switch p := pin.Payload.(type) {
 		case *pipeline.ContentData:
 			if pin.Name == definitionKey {
-				if _, ok := nodeState.definitions[p.Name]; ok {
+				if _, ok := nodeData.definitions[p.Name]; ok {
 					return fmt.Errorf("go node supplied multiple definitions with the same name (%v)", p.Name)
 				}
-				data := strings.ReplaceAll(p.Data, "{{.Prefix}}", n.Prefix)
-				nodeState.definitions[p.Name] = data
+				data := strings.ReplaceAll(p.Data, "{{.Prefix}}", nodeData.Prefix)
+				nodeData.definitions[p.Name] = data
 			}
 		}
 	}
 	return nil
 }
 
-func (n *goNode) makeMetadataValue(pin *pipeline.StructData, eb errors.Block) string {
+func (n *goNode) makeMetadataValue(nodeData *goNodeData, pin *pipeline.StructData, eb errors.Block) string {
 	w := ofstrings.GetWriter(eb)
 	defer ofstrings.PutWriter(w)
 	ca := ofstrings.CompileArgs{Quote: "\"", Separator: ",", Eb: eb}
-	md, err := makeMetadata(pin, n.TablePrefix)
+	md, err := makeMetadata(pin, nodeData.TablePrefix)
 	eb.AddError(err)
 	fn := md.FieldNames()
 	tn := md.TagNames()
 
-	w.WriteString("&" + n.Prefix + "Metadata{\n")
+	w.WriteString("&" + nodeData.Prefix + "Metadata{\n")
 	w.WriteString("\t\t\ttable: \"" + md.Name + "\",\n")
 	w.WriteString("\t\t\ttags: []string{" + ofstrings.CompileStrings(ca, tn...) + "},\n")
 	w.WriteString("\t\t\tfields: []string{" + ofstrings.CompileStrings(ca, fn...) + "},\n")
-	w.WriteString("\t\t\tkeys: map[string]*" + n.Prefix + "KeyMetadata{\n")
+	w.WriteString("\t\t\tkeys: map[string]*" + nodeData.Prefix + "KeyMetadata{\n")
 	for k, _ := range md.Keys {
-		w.WriteString("\t\t\t\t\"" + k + "\": &" + n.Prefix + "KeyMetadata{\n")
+		w.WriteString("\t\t\t\t\"" + k + "\": &" + nodeData.Prefix + "KeyMetadata{\n")
 		w.WriteString("\t\t\t\t\ttags: []string{" + ofstrings.CompileStrings(ca, md.KeyTagNames(k)...) + "},\n")
 		w.WriteString("\t\t\t\t\tfields: []string{" + ofstrings.CompileStrings(ca, md.KeyFieldNames(k)...) + "},\n")
 		w.WriteString("\t\t\t\t},\n")
@@ -160,7 +183,7 @@ func (n *goNode) makeMetadataValue(pin *pipeline.StructData, eb errors.Block) st
 	return ofstrings.String(w)
 }
 
-func (n *goNode) makeTemplates(vars map[string]any, output *pipeline.RunOutput) error {
+func (n *goNode) makeTemplates(nodeData *goNodeData, vars map[string]any, output *pipeline.RunOutput) error {
 	templatesFs, ok := pipeline.FindFs(TemplateFsName)
 	if !ok {
 		return fmt.Errorf("go node: No FS for name \"%v\"", TemplateFsName)
@@ -178,7 +201,7 @@ func (n *goNode) makeTemplates(vars map[string]any, output *pipeline.RunOutput) 
 		b, err = n.runFormat(b)
 		eb.AddError(err)
 		if err == nil {
-			name := n.fileName(path.Base(match), ".go")
+			name := nodeData.fileName(path.Base(match), ".go")
 			output.Pins = append(output.Pins, pipeline.Pin{Payload: &pipeline.ContentData{Name: name, Data: string(b)}})
 		}
 	}
@@ -200,37 +223,25 @@ func (n *goNode) runFormat(src []byte) ([]byte, error) {
 	return format.Source(src)
 }
 
-func (n *goNode) fileName(base, format string) string {
-	prefix := strings.Trim(n.Prefix, "_")
-	if prefix != "" {
-		prefix += "_"
-	}
-
-	// Trim the extension
-	base = base[:len(base)-len(path.Ext(base))]
-
-	return prefix + base + format
-}
-
-func (n *goNode) makeVars(nodeState *goNodeState) (map[string]any, error) {
-	if n.Format == "" {
+func (n *goNode) makeVars(nodeData *goNodeData) (map[string]any, error) {
+	if nodeData.Format == "" {
 		return nil, fmt.Errorf("Requires format (set Format= on node)")
 	}
-	if n.Pkg == "" {
+	if nodeData.Pkg == "" {
 		return nil, fmt.Errorf("Requires package name (set Pkg= on node)")
 	}
 
 	m := make(map[string]any)
-	m["Package"] = n.Pkg
+	m["Package"] = nodeData.Pkg
 	m["UtilPackage"] = registry.UtilPackageName
-	m["Prefix"] = n.Prefix
+	m["Prefix"] = nodeData.Prefix
 	var tableDefs []TableDef
-	for k, v := range nodeState.definitions {
+	for k, v := range nodeData.definitions {
 		tableDefs = append(tableDefs, TableDef{Name: k, Statements: v})
 	}
 	m["Tabledefs"] = tableDefs
 	var metadatas []MetadataDef
-	for k, v := range nodeState.metadata {
+	for k, v := range nodeData.metadata {
 		metadatas = append(metadatas, MetadataDef{Name: k, Value: v})
 	}
 	m["Metadata"] = metadatas
