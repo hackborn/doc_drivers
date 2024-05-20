@@ -22,40 +22,61 @@ const (
 var (
 	_refTableDefs = map[string]_refSqlTableDef{
 		// Begin tabledefs
-		`Company`: {
+		`UiSetting`: {
 			cols: []_refSqlTableCol{
-				{`id`, `VARCHAR(255)`},
-				{`name`, `VARCHAR(255)`},
-				{`val`, `INTEGER`},
-				{`fy`, `INTEGER`},
+				{`name`, `VARCHAR(255)`, ``},
+				{`value`, `TEXT`, `json`},
 			},
-			create: `DROP TABLE IF EXISTS refcompany;
-CREATE TABLE IF NOT EXISTS refcompany (
-		id VARCHAR(255),
-		name VARCHAR(255),
-		val INTEGER,
-		fy INTEGER,
-		PRIMARY KEY (id)
+			create: `DROP TABLE IF EXISTS gensettings;
+CREATE TABLE IF NOT EXISTS gensettings (
+	name VARCHAR(255),
+	value TEXT,
+	PRIMARY KEY (name)
 );`,
-		},
-		`Filing`: {
+		}, `Company`: {
 			cols: []_refSqlTableCol{
-				{`ticker`, `VARCHAR(255)`},
-				{`end`, `VARCHAR(255)`},
-				{`form`, `VARCHAR(255)`},
-				{`val`, `INTEGER`},
-				{`units`, `VARCHAR(255)`},
-				{`fy`, `INTEGER`},
+				{`id`, `VARCHAR(255)`, ``},
+				{`name`, `VARCHAR(255)`, ``},
+				{`val`, `INTEGER`, ``},
+				{`fy`, `INTEGER`, ``},
 			},
-			create: `DROP TABLE IF EXISTS reffiling;
-CREATE TABLE IF NOT EXISTS reffiling (
-		ticker VARCHAR(255),
-		end VARCHAR(255),
-		form VARCHAR(255),
-		val INTEGER,
-		units VARCHAR(255),
-		fy INTEGER,
-		PRIMARY KEY (ticker, end, form)
+			create: `DROP TABLE IF EXISTS gencompany;
+CREATE TABLE IF NOT EXISTS gencompany (
+	id VARCHAR(255),
+	name VARCHAR(255),
+	val INTEGER,
+	fy INTEGER,
+	PRIMARY KEY (id)
+);`,
+		}, `Filing`: {
+			cols: []_refSqlTableCol{
+				{`ticker`, `VARCHAR(255)`, ``},
+				{`end`, `VARCHAR(255)`, ``},
+				{`form`, `VARCHAR(255)`, ``},
+				{`val`, `INTEGER`, ``},
+				{`units`, `VARCHAR(255)`, ``},
+				{`fy`, `INTEGER`, ``},
+			},
+			create: `DROP TABLE IF EXISTS genfiling;
+CREATE TABLE IF NOT EXISTS genfiling (
+	ticker VARCHAR(255),
+	end VARCHAR(255),
+	form VARCHAR(255),
+	val INTEGER,
+	units VARCHAR(255),
+	fy INTEGER,
+	PRIMARY KEY (ticker,end,form)
+);`,
+		}, `CollectionSetting`: {
+			cols: []_refSqlTableCol{
+				{`name`, `VARCHAR(255)`, ``},
+				{`value`, `TEXT`, `json`},
+			},
+			create: `DROP TABLE IF EXISTS gensettings;
+CREATE TABLE IF NOT EXISTS gensettings (
+	name VARCHAR(255),
+	value TEXT,
+	PRIMARY KEY (name)
 );`,
 		},
 		// End tabledefs
@@ -86,6 +107,28 @@ CREATE TABLE IF NOT EXISTS reffiling (
 				"": &_refKeyMetadata{
 					tags:   []string{"ticker", "end", "form"},
 					fields: []string{"Ticker", "EndDate", "Form"},
+				},
+			},
+		},
+		`CollectionSetting`: &_refMetadata{
+			table:  "genCollectionSetting",
+			tags:   []string{"name", "value"},
+			fields: []string{"Name", "Value"},
+			keys: map[string]*_refKeyMetadata{
+				"": &_refKeyMetadata{
+					tags:   []string{"name"},
+					fields: []string{"Name"},
+				},
+			},
+		},
+		`UiSetting`: &_refMetadata{
+			table:  "genCollectionSetting",
+			tags:   []string{"name", "value"},
+			fields: []string{"Name", "Value"},
+			keys: map[string]*_refKeyMetadata{
+				"": &_refKeyMetadata{
+					tags:   []string{"name"},
+					fields: []string{"Name"},
 				},
 			},
 		},

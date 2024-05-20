@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/hackborn/onefunc/assign"
 	oferrors "github.com/hackborn/onefunc/errors"
 )
 
@@ -27,9 +28,36 @@ func (d *{{.Prefix}}SqlTableDef) Col(name string) ({{.Prefix}}SqlTableCol, bool)
 	return {{.Prefix}}SqlTableCol{}, false
 }
 
+func (d *{{.Prefix}}SqlTableDef) AssignsFor(tags []string) []assign.AssignFunc {
+	ans := make([]assign.AssignFunc, 0, len(tags))
+	for _, tag := range tags {
+		ans = append(ans, d.assignForTag(tag, d.cols))
+	}
+	return ans
+}
+
+func (d *{{.Prefix}}SqlTableDef) assignForTag(tag string, cols []{{.Prefix}}SqlTableCol) assign.AssignFunc {
+	switch d.formatForTag(tag, cols) {
+	case "json":
+		return assign.AssignJson
+	default:
+		return nil
+	}
+}
+
+func (d *{{.Prefix}}SqlTableDef) formatForTag(tag string, cols []{{.Prefix}}SqlTableCol) string {
+	for _, col := range cols {
+		if col.name == tag {
+			return col.format
+		}
+	}
+	return ""
+}
+
 type {{.Prefix}}SqlTableCol struct {
 	name   string
 	dbType string
+	format string // Format will be blank if there are no special formatting rules, else a format.
 }
 
 // {{.Prefix}}RawSqlTable is a representation of an existing SQL table.

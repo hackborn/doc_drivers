@@ -79,7 +79,11 @@ func (n *sqlNode) makeDefinitionCols(md metadata, eb oferrors.Block) string {
 	sb.WriteString("\tcols: []{{.Prefix}}SqlTableCol{\n")
 	for _, field := range md.Fields {
 		sqlType := convertGoTypeToSQLType(field.Type)
-		sb.WriteString(fmt.Sprintf("\t\t{`%s`, `%s`},\n", field.Tag, sqlType))
+		format := ""
+		if field.Type == pipeline.UnknownType {
+			format = "json"
+		}
+		sb.WriteString(fmt.Sprintf("\t\t{`%s`, `%s`, `%s`},\n", field.Tag, sqlType, format))
 	}
 
 	sb.WriteString("\t},")

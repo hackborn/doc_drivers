@@ -107,6 +107,9 @@ func (n *goNode) Flush(state *pipeline.State, output *pipeline.RunOutput) error 
 
 	//	fmt.Println("vars", vars)
 	err = n.makeTemplates(data, vars, output)
+	if err != nil {
+		return fmt.Errorf("go node makeTemplates err: %w", err)
+	}
 	return err
 }
 

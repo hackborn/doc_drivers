@@ -10,6 +10,9 @@
 cmd/driverutil/driverutil
 cmd/driverutil/driverutil.exe
 
+# OS files
+*.DS_Store
+
 # Almost everything in data directories
 backends/sqlite/data/*
 !backends/sqlite/data/README.md

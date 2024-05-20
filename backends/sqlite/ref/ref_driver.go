@@ -45,18 +45,14 @@ func (d *_refDriver) Format() doc.Format {
 }
 
 func (d *_refDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional, error) {
-	eb := &errors.FirstBlock{}
-	meta, ok := _refMetadatas[a.TypeName()]
-	if !ok {
-		return nil, fmt.Errorf("missing metadata for \"%v\"", a.TypeName())
-	}
-	keys, ok := meta.keys[""]
-	if !ok {
-		return nil, fmt.Errorf("missing primary key metadata for \"%v\"", a.TypeName())
+	meta, keys, cols, err := d.prepareSet(a)
+	if err != nil {
+		return nil, err
 	}
 
+	eb := &errors.FirstBlock{}
 	statement := _refSetSql
-	handler := &fieldsAndValuesHandler{}
+	handler := &fieldsAndValuesHandler{cols: cols}
 	ca1 := ofstrings.CompileArgs{Quote: "", Separator: ", ", Eb: eb}
 	ca2 := ofstrings.CompileArgs{Quote: _refQuoteSz, Separator: ", ", Eb: eb}
 	extract.From(req.ItemAny(), extract.NewChain(meta.FieldsToTags(), handler))
@@ -76,16 +72,29 @@ func (d *_refDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional,
 	return nil, nil
 }
 
-func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, error) {
-	eb := &errors.FirstBlock{}
-	meta, ok := _refMetadatas[a.TypeName()]
+func (d *_refDriver) prepareSet(a doc.Allocator) (*_refMetadata, *_refKeyMetadata, []_refSqlTableCol, error) {
+	tn := a.TypeName()
+	meta, ok := _refMetadatas[tn]
 	if !ok {
-		return nil, fmt.Errorf("missing metadata for \"%v\"", a.TypeName())
+		return nil, nil, nil, fmt.Errorf("missing metadata for \"%v\"", tn)
 	}
-	tags, fields := getTagsAndFields(meta, req)
-	if len(tags) < 1 {
-		return nil, fmt.Errorf("missing fields for \"%v\"", a.TypeName())
+	keys, ok := meta.keys[""]
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("missing primary key metadata for \"%v\"", tn)
 	}
+	tableDef, ok := _refTableDefs[tn]
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("missing tabledef for \"%v\"", tn)
+	}
+	return meta, keys, tableDef.cols, nil
+}
+
+func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, error) {
+	meta, tags, fields, assigns, err := d.prepareGet(req, a)
+	if err != nil {
+		return nil, err
+	}
+	eb := &errors.FirstBlock{}
 	ca := ofstrings.CompileArgs{Quote: "", Separator: ", ", Eb: eb}
 	selectFields := ofstrings.CompileStrings(ca, tags...)
 	where, err := whereClause(req)
@@ -111,6 +120,7 @@ func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, er
 	vreq := assign.ValuesRequest{
 		FieldNames: fields,
 		NewValues:  dest,
+		Assigns:    assigns,
 	}
 
 	for rows.Next() {
@@ -123,6 +133,24 @@ func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, er
 		}
 	}
 	return nil, nil
+}
+
+func (d *_refDriver) prepareGet(req doc.GetRequest, a doc.Allocator) (*_refMetadata, []string, []string, []assign.AssignFunc, error) {
+	tn := a.TypeName()
+	meta, ok := _refMetadatas[tn]
+	if !ok {
+		return nil, nil, nil, nil, fmt.Errorf("missing metadata for \"%v\"", tn)
+	}
+	tags, fields := getTagsAndFields(meta, req)
+	if len(tags) < 1 {
+		return nil, nil, nil, nil, fmt.Errorf("missing fields for \"%v\"", tn)
+	}
+	tableDef, ok := _refTableDefs[tn]
+	if !ok {
+		return nil, nil, nil, nil, fmt.Errorf("missing tabledef for \"%v\"", tn)
+	}
+	assigns := tableDef.AssignsFor(tags)
+	return meta, tags, fields, assigns, nil
 }
 
 func (d *_refDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Optional, error) {
