@@ -55,7 +55,7 @@ func (d *{{.Prefix}}Driver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Op
 
 	eb := &errors.FirstBlock{}
 	statement := {{.Prefix}}SetSql
-	handler := &fieldsAndValuesHandler{cols: cols}
+	handler := &fieldsAndValuesHandler{cols: cols, filter: req.GetFilter()}
 	ca1 := ofstrings.CompileArgs{Quote: "", Separator: ", ", Eb: eb}
 	ca2 := ofstrings.CompileArgs{Quote: {{.Prefix}}QuoteSz, Separator: ", ", Eb: eb}
 	extract.From(req.ItemAny(), extract.NewChain(meta.FieldsToTags(), handler))

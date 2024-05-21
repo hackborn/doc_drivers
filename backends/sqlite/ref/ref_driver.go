@@ -52,7 +52,7 @@ func (d *_refDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional,
 
 	eb := &errors.FirstBlock{}
 	statement := _refSetSql
-	handler := &fieldsAndValuesHandler{cols: cols}
+	handler := &fieldsAndValuesHandler{cols: cols, filter: req.GetFilter()}
 	ca1 := ofstrings.CompileArgs{Quote: "", Separator: ", ", Eb: eb}
 	ca2 := ofstrings.CompileArgs{Quote: _refQuoteSz, Separator: ", ", Eb: eb}
 	extract.From(req.ItemAny(), extract.NewChain(meta.FieldsToTags(), handler))

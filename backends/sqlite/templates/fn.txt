@@ -49,20 +49,24 @@ type fieldsAndValuesHandler struct {
 	fields []any
 	values []any
 	cols   []{{.Prefix}}SqlTableCol
+	filter doc.Filter // Accept / reject adding to fields/values based on filter.
 }
 
 func (h *fieldsAndValuesHandler) Handle(name string, value any) (string, any) {
+	col := getColByName(name, h.cols)
+	if h.filter.Rule != 0 && !acceptCol(h.filter.Rule, col.name, col.flags) {
+		return name, value
+	}
 	h.fields = append(h.fields, name)
-	//	h.values = append(h.values, value)
-	formatted := h.formatValue(name, value)
+	// Deal with any values that can't be stored directly in the DB by formatting them.
+	formatted := h.formatValue(name, col, value)
 	h.values = append(h.values, formatted)
 	return name, value
 }
 
 // formatValue applies any desired formmating to the value.
-func (h *fieldsAndValuesHandler) formatValue(name string, value any) any {
-	format := h.formatForTag(name)
-	switch format {
+func (h *fieldsAndValuesHandler) formatValue(name string, col {{.Prefix}}SqlTableCol, value any) any {
+	switch col.format {
 	case "json":
 		if dat, err := json.Marshal(value); err == nil {
 			return string(dat)
@@ -73,15 +77,6 @@ func (h *fieldsAndValuesHandler) formatValue(name string, value any) any {
 	default:
 		return value
 	}
-}
-
-func (h *fieldsAndValuesHandler) formatForTag(tag string) string {
-	for _, v := range h.cols {
-		if v.name == tag {
-			return v.format
-		}
-	}
-	return ""
 }
 
 func makeExcludedFieldValues(eb errors.Block, names []any) string {
@@ -119,6 +114,27 @@ func whereClause(req doc.GetRequest) (string, error) {
 		return "", nil
 	}
 	return " WHERE " + s, nil
+}
+
+func getColByName(name string, cols []{{.Prefix}}SqlTableCol) {{.Prefix}}SqlTableCol {
+	for _, c := range cols {
+		if c.name == name {
+			return c
+		}
+	}
+	return {{.Prefix}}SqlTableCol{}
+}
+
+func acceptCol(rule int64, name string, flags uint64) bool {
+	switch rule {
+	case 0, doc.RuleSetItem:
+		return true
+	case doc.RuleCreateItem:
+		// Everything is true but auto inc
+		return flags&colFlagAuto == 0
+	default:
+		return true
+	}
 }
 
 // getTagsAndFields extracts the tag names from the request and returns

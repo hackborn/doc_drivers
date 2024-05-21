@@ -77,13 +77,20 @@ func (n *sqlNode) makeDefinitionCols(md metadata, eb oferrors.Block) string {
 	defer ofstrings.PutWriter(sb)
 
 	sb.WriteString("\tcols: []{{.Prefix}}SqlTableCol{\n")
+	keys := md.KeySpecs()
 	for _, field := range md.Fields {
-		sqlType := convertGoTypeToSQLType(field.Type)
 		format := ""
+		// Masks are defined in ref/ref_sql.go
+		mask := "0"
+		sqlType := convertGoTypeToSQLType(field.Type)
 		if field.Type == pipeline.UnknownType {
 			format = "json"
 		}
-		sb.WriteString(fmt.Sprintf("\t\t{`%s`, `%s`, `%s`},\n", field.Tag, sqlType, format))
+		// In SQL, integer primary keys are always auto increment.
+		if sqlType == sqlInteger && keys.isPrimary(field.Tag) {
+			mask = "colFlagAuto"
+		}
+		sb.WriteString(fmt.Sprintf("\t\t{`%s`, `%s`, `%s`, %s},\n", field.Tag, sqlType, format, mask))
 	}
 
 	sb.WriteString("\t},")
@@ -140,7 +147,7 @@ func convertGoTypeToSQLType(goType string) string {
 	case "string":
 		return "VARCHAR(255)"
 	case "int", "int64":
-		return "INTEGER"
+		return sqlInteger
 	case "float", "float64":
 		return "FLOAT"
 	case "bool":
@@ -149,3 +156,10 @@ func convertGoTypeToSQLType(goType string) string {
 		return "TEXT"
 	}
 }
+
+const sqlInteger = "INTEGER"
+
+const (
+	// NOTE: Flags are replicated in ref/ref_sql.go
+	colFlagAuto = 1 << iota // The column value is auto-generated.
+)

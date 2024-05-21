@@ -171,13 +171,13 @@ func (n *goNode) makeMetadataValue(nodeData *goNodeData, pin *pipeline.StructDat
 	fn := md.FieldNames()
 	tn := md.TagNames()
 
-	w.WriteString("&" + nodeData.Prefix + "Metadata{\n")
+	w.WriteString("{\n")
 	w.WriteString("\t\t\ttable: \"" + md.Name + "\",\n")
 	w.WriteString("\t\t\ttags: []string{" + ofstrings.CompileStrings(ca, tn...) + "},\n")
 	w.WriteString("\t\t\tfields: []string{" + ofstrings.CompileStrings(ca, fn...) + "},\n")
 	w.WriteString("\t\t\tkeys: map[string]*" + nodeData.Prefix + "KeyMetadata{\n")
-	for k, _ := range md.Keys {
-		w.WriteString("\t\t\t\t\"" + k + "\": &" + nodeData.Prefix + "KeyMetadata{\n")
+	for k := range md.Keys {
+		w.WriteString("\t\t\t\t\"" + k + "\": {\n")
 		w.WriteString("\t\t\t\t\ttags: []string{" + ofstrings.CompileStrings(ca, md.KeyTagNames(k)...) + "},\n")
 		w.WriteString("\t\t\t\t\tfields: []string{" + ofstrings.CompileStrings(ca, md.KeyFieldNames(k)...) + "},\n")
 		w.WriteString("\t\t\t\t},\n")

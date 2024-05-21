@@ -52,10 +52,26 @@ func (d *_refSqlTableDef) formatForTag(tag string, cols []_refSqlTableCol) strin
 }
 
 type _refSqlTableCol struct {
-	name   string
+	// The column name.
+	name string
+
+	// The data type in the database.
 	dbType string
-	format string // Format will be blank if there are no special formatting rules, else a format.
+
+	// format optionally specifies a serialization format for storing this
+	// field in the database. For example, if the Go type can't be translated
+	// to a type in the database, this can be specified to "json" to write
+	// the value to JSON and store it as a string.
+	format string
+
+	// Additional info about this column.
+	flags uint64
 }
+
+const (
+	// NOTE: Flag names are referenced in nodes/sql_node.go
+	colFlagAuto = 1 << iota // The column value is auto-generated.
+)
 
 // _refRawSqlTable is a representation of an existing SQL table.
 // It is an intermediary before building a local SQL table.

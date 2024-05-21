@@ -144,6 +144,27 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 			resp, err := doc.Get[domain.CollectionSetting](db, getreq)
 			return ReportEntry{Name: "Get Fav Setting", Response: resp, Err: err}
 		},
+		func(db *doc.DB) ReportEntry {
+			// test autoincrement part 1 (which hopefully is fully supported)
+			e := domain.Events{Name: "a", Value: "up"}
+			req := doc.SetRequest[domain.Events]{Item: e, Filter: doc.FilterCreateItem}
+			resp, err := doc.Set(db, req)
+			return ReportEntry{Name: "Set Events 1", Response: resp, Err: err}
+		},
+		func(db *doc.DB) ReportEntry {
+			// test autoincrement part 2
+			e := domain.Events{Name: "b", Value: "down"}
+			req := doc.SetRequest[domain.Events]{Item: e, Filter: doc.FilterCreateItem}
+			resp, err := doc.Set(db, req)
+			return ReportEntry{Name: "Set Events 2", Response: resp, Err: err}
+		},
+		func(db *doc.DB) ReportEntry {
+			// test autoincrement part 3
+			getreq := doc.GetRequest{}
+			getreq.Condition, _ = db.Expr(`name = "b"`, nil).Compile()
+			resp, err := doc.Get[domain.Events](db, getreq)
+			return ReportEntry{Name: "Get Events", Response: resp, Err: err}
+		},
 	}
 
 	return fn
