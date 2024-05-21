@@ -41,32 +41,40 @@ func (d metadata) KeyFieldNames(key string) []string {
 	})
 }
 
-// PrimaryKey answers the "primary" key in the key map. This is
-// just defined as the first key in alphabetic order.
-func (d metadata) PrimaryKey() (string, bool) {
-	if len(d.Keys) < 1 {
-		return "", false
-	}
-	first := true
-	key := ""
-	for k, _ := range d.Keys {
-		if first {
-			key = k
-			first = false
-		} else {
-			if strings.Compare(k, key) < 0 {
-				key = k
+func (d metadata) KeySpecs() keySpecList {
+	list := keySpecList{}
+	for name, v := range d.Keys {
+		groupSpec := keyGroupSpec{name: name}
+		for _, key := range v {
+			keySpec := keySpec{Field: key.Field, ColumnName: key.Tag}
+			if field, ok := d.fieldForTag(key.Tag); ok {
+				keySpec.DbType = convertGoTypeToSQLType(field.Type)
 			}
+			groupSpec.keys = append(groupSpec.keys, keySpec)
+		}
+		list.keyGroups = append(list.keyGroups, groupSpec)
+	}
+	// Sort so primary key is first
+	slices.SortFunc(list.keyGroups, func(a, b keyGroupSpec) int {
+		return strings.Compare(a.name, b.name)
+	})
+	return list
+}
+
+func (d metadata) fieldForTag(tag string) (structField, bool) {
+	for _, sf := range d.Fields {
+		if sf.Tag == tag {
+			return sf, true
 		}
 	}
-	return key, true
+	return structField{}, false
 }
 
 type structField struct {
 	Tag    string
 	Field  string
 	Type   string
-	Format string
+	Format string // A format to translate to when storing in the database.
 }
 
 type structKey struct {
@@ -159,4 +167,48 @@ func convertToLocal(f pipeline.StructField, parsed parsedTag) (structField, *par
 		key = &parsedKey{name: parsed.keyGroup, position: parsed.keyIndex}
 	}
 	return sf, key
+}
+
+// keySpecList is the ordered list of key metadata.
+// Keys have a variety of representations in this
+// metadata mess, this is targeted as being the
+// "full" representation.
+type keySpecList struct {
+	// keys is an ordered list of keys. The first
+	// is the "primary."
+	keyGroups []keyGroupSpec
+}
+
+func (s keySpecList) isPrimary(tag string) bool {
+	if len(s.keyGroups) < 1 {
+		return false
+	}
+	for _, keySpec := range s.keyGroups[0].keys {
+		if keySpec.ColumnName == tag {
+			return true
+		}
+	}
+	return false
+}
+
+type keyGroupSpec struct {
+	name string
+	keys []keySpec
+}
+
+func (s keyGroupSpec) columnNames() []string {
+	return ofslices.ArrayFrom(s.keys, func(key keySpec) string {
+		return key.ColumnName
+	})
+}
+
+type keySpec struct {
+	// The field name in the source struct.
+	Field string
+
+	// The column name in the databse.
+	ColumnName string
+
+	// The data type in the database.
+	DbType string
 }

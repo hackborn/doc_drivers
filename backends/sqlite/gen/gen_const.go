@@ -24,7 +24,19 @@ const (
 
 var (
 	genTableDefs = map[string]genSqlTableDef{
-		`Company`: {
+		`UiSetting`: {
+			cols: []genSqlTableCol{
+				{`name`, `VARCHAR(255)`, ``},
+				{`value`, `TEXT`, `json`},
+			},
+			create: `DROP TABLE IF EXISTS gensettings;
+CREATE TABLE IF NOT EXISTS gensettings (
+	name VARCHAR(255) NOT NULL,
+	value TEXT,
+	PRIMARY KEY (name)
+);
+`,
+		}, `Company`: {
 			cols: []genSqlTableCol{
 				{`id`, `VARCHAR(255)`, ``},
 				{`name`, `VARCHAR(255)`, ``},
@@ -33,12 +45,29 @@ var (
 			},
 			create: `DROP TABLE IF EXISTS gencompany;
 CREATE TABLE IF NOT EXISTS gencompany (
-	id VARCHAR(255),
+	id VARCHAR(255) NOT NULL,
 	name VARCHAR(255),
 	val INTEGER,
 	fy INTEGER,
 	PRIMARY KEY (id)
-);`,
+);
+CREATE INDEX b ON gencompany (name);
+CREATE INDEX c ON gencompany (fy);
+`,
+		}, `Events`: {
+			cols: []genSqlTableCol{
+				{`time`, `INTEGER`, ``},
+				{`name`, `VARCHAR(255)`, ``},
+				{`value`, `VARCHAR(255)`, ``},
+			},
+			create: `DROP TABLE IF EXISTS genevents;
+CREATE TABLE IF NOT EXISTS genevents (
+	time INTEGER NOT NULL,
+	name VARCHAR(255),
+	value VARCHAR(255),
+	PRIMARY KEY (time)
+);
+`,
 		}, `Filing`: {
 			cols: []genSqlTableCol{
 				{`ticker`, `VARCHAR(255)`, ``},
@@ -50,14 +79,15 @@ CREATE TABLE IF NOT EXISTS gencompany (
 			},
 			create: `DROP TABLE IF EXISTS genfiling;
 CREATE TABLE IF NOT EXISTS genfiling (
-	ticker VARCHAR(255),
-	end VARCHAR(255),
-	form VARCHAR(255),
+	ticker VARCHAR(255) NOT NULL,
+	end VARCHAR(255) NOT NULL,
+	form VARCHAR(255) NOT NULL,
 	val INTEGER,
 	units VARCHAR(255),
 	fy INTEGER,
 	PRIMARY KEY (ticker,end,form)
-);`,
+);
+`,
 		}, `CollectionSetting`: {
 			cols: []genSqlTableCol{
 				{`name`, `VARCHAR(255)`, ``},
@@ -65,21 +95,11 @@ CREATE TABLE IF NOT EXISTS genfiling (
 			},
 			create: `DROP TABLE IF EXISTS gensettings;
 CREATE TABLE IF NOT EXISTS gensettings (
-	name VARCHAR(255),
+	name VARCHAR(255) NOT NULL,
 	value TEXT,
 	PRIMARY KEY (name)
-);`,
-		}, `UiSetting`: {
-			cols: []genSqlTableCol{
-				{`name`, `VARCHAR(255)`, ``},
-				{`value`, `TEXT`, `json`},
-			},
-			create: `DROP TABLE IF EXISTS gensettings;
-CREATE TABLE IF NOT EXISTS gensettings (
-	name VARCHAR(255),
-	value TEXT,
-	PRIMARY KEY (name)
-);`,
+);
+`,
 		},
 	}
 
@@ -100,6 +120,16 @@ CREATE TABLE IF NOT EXISTS gensettings (
 				"": &genKeyMetadata{
 					tags:   []string{"id"},
 					fields: []string{"Id"},
+				},
+			},
+		}, `Events`: &genMetadata{
+			table:  "genevents",
+			tags:   []string{"time", "name", "value"},
+			fields: []string{"Time", "Name", "Value"},
+			keys: map[string]*genKeyMetadata{
+				"": &genKeyMetadata{
+					tags:   []string{"time"},
+					fields: []string{"Time"},
 				},
 			},
 		}, `Filing`: &genMetadata{

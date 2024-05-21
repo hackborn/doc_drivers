@@ -3,7 +3,13 @@
 Utility for generating new SQLITE drivers for [hackborn/doc](https://github.com/hackborn/doc). Use cmd/driverutil
 to generate various pieces.
 
-When developing a new driver, the workflow is:
+## KEYS
+
+SQLITE does not support multiple keys, so additional keys become indexes.
+
+## WRITING THE DRIVER
+
+When working on the driver, the workflow is:
 
 - Make changes to the reference driver in ref/\*
 - Run driverutility->Run reference driver to see if it worked.

@@ -68,7 +68,7 @@ Id int `doc:"key"`
 
 The database will have a key of `Id` or `id`.
 
-2. Multiple keys can be specified for compound database keys.
+2. Multiple keys can be specified for a compound database key.
 
 ```
 Pri int `doc:"key"`
@@ -97,6 +97,18 @@ Date int `doc:"key(group1, 0)"`
 The database will have a key of `date, name`.
 
 5. Key rules vary depending on the underlying storage model and level of support in the driver. Currently the only special rule is that the "primary" key is the first key group name, alphabetically. The easiest way to specify a primary key is to leave the key name blank.
+
+Additionally, how multiple keys are handled depends on the underlying database driver. See driver docs for specifics.
+
+### Tag Keyword: Format
+
+A tag of `format` will allow specification of a serialization format for the field. This is used to support Go types that are not supported by the underlying database. There is currently a single serialization format, JSON.
+
+```
+Order []int64 `doc:"format(json)"`
+```
+
+This will allow the int slice to be written to and read from the database. In theory, you should never have to use the format tag: Unhandled types are automatically serialzed.
 
 ### Tag Keyword: -
 

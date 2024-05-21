@@ -101,20 +101,35 @@ func (n *sqlNode) makeDefinitionCreate(md metadata, eb oferrors.Block) string {
 	}
 	sb.WriteString(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n", md.Name))
 
-	for _, field := range md.Fields {
+	keys := md.KeySpecs()
+
+	for i, field := range md.Fields {
+		if i > 0 {
+			sb.WriteString(",\n")
+		}
 		sqlType := convertGoTypeToSQLType(field.Type)
-		sb.WriteString(fmt.Sprintf("\t%s %s,\n", field.Tag, sqlType))
+		postFix := ""
+		if keys.isPrimary(field.Tag) {
+			postFix += " NOT NULL"
+		}
+		sb.WriteString(fmt.Sprintf("\t%s %s%s", field.Tag, sqlType, postFix))
 	}
 
-	// XXX Figure out how sqlite does non-primary keys
-	if pk, ok := md.PrimaryKey(); ok {
-		keyNames := md.KeyTagNames(pk)
+	// The first key is the primary, the rest are indexes
+	for i, groupSpec := range keys.keyGroups {
+		columnNames := groupSpec.columnNames()
 		ca := ofstrings.CompileArgs{Separator: ","}
-		keys := ofstrings.CompileStrings(ca, keyNames...)
-		sb.WriteString("\tPRIMARY KEY (" + keys + ")\n")
+		s := ofstrings.CompileStrings(ca, columnNames...)
+
+		if i == 0 {
+			sb.WriteString(",\n")
+			sb.WriteString("\tPRIMARY KEY (" + s + ")\n);\n")
+		} else if groupSpec.name != "" {
+			sb.WriteString(fmt.Sprintf("CREATE INDEX %v ON %v (%v);\n", groupSpec.name, md.Name, s))
+		}
 	}
 
-	sb.WriteString(");`,")
+	sb.WriteString("`,")
 
 	return ofstrings.String(sb)
 }
