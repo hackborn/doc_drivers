@@ -125,7 +125,7 @@ func (n *sqlNode) makeDefinitionCreate(md metadata, eb oferrors.Block) string {
 			sb.WriteString(",\n")
 			sb.WriteString("\tPRIMARY KEY (" + s + ")\n);\n")
 		} else if groupSpec.name != "" {
-			sb.WriteString(fmt.Sprintf("CREATE INDEX %v ON %v (%v);\n", groupSpec.name, md.Name, s))
+			sb.WriteString(fmt.Sprintf("CREATE INDEX IF NOT EXISTS %v ON %v (%v);\n", groupSpec.name, md.Name, s))
 		}
 	}
 

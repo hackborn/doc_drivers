@@ -51,8 +51,8 @@ CREATE TABLE IF NOT EXISTS gencompany (
 	fy INTEGER,
 	PRIMARY KEY (id)
 );
-CREATE INDEX b ON gencompany (name);
-CREATE INDEX c ON gencompany (fy);
+CREATE INDEX IF NOT EXISTS b ON gencompany (name);
+CREATE INDEX IF NOT EXISTS c ON gencompany (fy);
 `,
 		}, `Events`: {
 			cols: []genSqlTableCol{
@@ -109,6 +109,10 @@ CREATE TABLE IF NOT EXISTS gensettings (
 			tags:   []string{"id", "name", "val", "fy"},
 			fields: []string{"Id", "Name", "Value", "FoundedYear"},
 			keys: map[string]*genKeyMetadata{
+				"": &genKeyMetadata{
+					tags:   []string{"id"},
+					fields: []string{"Id"},
+				},
 				"b": &genKeyMetadata{
 					tags:   []string{"name"},
 					fields: []string{"Name"},
@@ -116,10 +120,6 @@ CREATE TABLE IF NOT EXISTS gensettings (
 				"c": &genKeyMetadata{
 					tags:   []string{"fy"},
 					fields: []string{"FoundedYear"},
-				},
-				"": &genKeyMetadata{
-					tags:   []string{"id"},
-					fields: []string{"Id"},
 				},
 			},
 		}, `Events`: &genMetadata{
