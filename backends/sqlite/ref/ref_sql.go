@@ -152,7 +152,7 @@ func _refNewSqlTableFromRaw(rows *sql.Rows, raw _refRawSqlTable, eb oferrors.Blo
 	dbName := ""
 	dbType := ""
 	var dest = make([]any, count, count)
-	for i, _ := range dest {
+	for i := range dest {
 		lc := strings.ToLower(raw.Names[i])
 		// Always provide a default, in case we hit a path that doesn't set a value.
 		dest[i] = new(any)

@@ -32,10 +32,10 @@ func (n *compareReportsNode) Run(state *pipeline.State, input pipeline.RunInput,
 	if genRun == nil {
 		return fmt.Errorf("Missing input pin gen/*")
 	}
-	return n.compare(refRun, genRun, output)
+	return n.compare(refRun, genRun)
 }
 
-func (n *compareReportsNode) compare(refRun, genRun *RunReportData, output *pipeline.RunOutput) error {
+func (n *compareReportsNode) compare(refRun, genRun *RunReportData) error {
 	if len(refRun.Entries) < 1 || len(refRun.Entries) != len(genRun.Entries) {
 		return fmt.Errorf("Missing report entries")
 	}

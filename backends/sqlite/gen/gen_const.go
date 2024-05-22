@@ -24,25 +24,7 @@ const (
 
 var (
 	genTableDefs = map[string]genSqlTableDef{
-		`Company`: {
-			cols: []genSqlTableCol{
-				{`id`, `VARCHAR(255)`, ``, 0},
-				{`name`, `VARCHAR(255)`, ``, 0},
-				{`val`, `INTEGER`, ``, 0},
-				{`fy`, `INTEGER`, ``, 0},
-			},
-			create: `DROP TABLE IF EXISTS gencompany;
-CREATE TABLE IF NOT EXISTS gencompany (
-	id VARCHAR(255) NOT NULL,
-	name VARCHAR(255),
-	val INTEGER,
-	fy INTEGER,
-	PRIMARY KEY (id)
-);
-CREATE INDEX IF NOT EXISTS b ON gencompany (name);
-CREATE INDEX IF NOT EXISTS c ON gencompany (fy);
-`,
-		}, `Events`: {
+		`Events`: {
 			cols: []genSqlTableCol{
 				{`time`, `INTEGER`, ``, colFlagAuto},
 				{`name`, `VARCHAR(255)`, ``, 0},
@@ -99,6 +81,24 @@ CREATE TABLE IF NOT EXISTS gensettings (
 	value TEXT,
 	PRIMARY KEY (name)
 );
+`,
+		}, `Company`: {
+			cols: []genSqlTableCol{
+				{`id`, `VARCHAR(255)`, ``, 0},
+				{`name`, `VARCHAR(255)`, ``, 0},
+				{`val`, `INTEGER`, ``, 0},
+				{`fy`, `INTEGER`, ``, 0},
+			},
+			create: `DROP TABLE IF EXISTS gencompany;
+CREATE TABLE IF NOT EXISTS gencompany (
+	id VARCHAR(255) NOT NULL,
+	name VARCHAR(255),
+	val INTEGER,
+	fy INTEGER,
+	PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS b ON gencompany (name);
+CREATE INDEX IF NOT EXISTS c ON gencompany (fy);
 `,
 		},
 	}

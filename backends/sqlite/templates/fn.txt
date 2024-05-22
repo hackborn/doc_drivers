@@ -59,13 +59,13 @@ func (h *fieldsAndValuesHandler) Handle(name string, value any) (string, any) {
 	}
 	h.fields = append(h.fields, name)
 	// Deal with any values that can't be stored directly in the DB by formatting them.
-	formatted := h.formatValue(name, col, value)
+	formatted := h.formatValue(col, value)
 	h.values = append(h.values, formatted)
 	return name, value
 }
 
 // formatValue applies any desired formmating to the value.
-func (h *fieldsAndValuesHandler) formatValue(name string, col {{.Prefix}}SqlTableCol, value any) any {
+func (h *fieldsAndValuesHandler) formatValue(col {{.Prefix}}SqlTableCol, value any) any {
 	switch col.format {
 	case "json":
 		if dat, err := json.Marshal(value); err == nil {

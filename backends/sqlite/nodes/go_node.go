@@ -92,7 +92,7 @@ func (n *goNode) Run(state *pipeline.State, input pipeline.RunInput, output *pip
 	for _, pin := range input.Pins {
 		switch p := pin.Payload.(type) {
 		case *pipeline.StructData:
-			eb.AddError(n.runStructPin(data, state, p))
+			eb.AddError(n.runStructPin(data, p))
 		}
 	}
 	return eb.Err
@@ -113,17 +113,17 @@ func (n *goNode) Flush(state *pipeline.State, output *pipeline.RunOutput) error 
 	return err
 }
 
-func (n *goNode) runStructPin(data *goNodeData, state *pipeline.State, pin *pipeline.StructData) error {
+func (n *goNode) runStructPin(data *goNodeData, pin *pipeline.StructData) error {
 	data.structs[pin.Name] = pin
 	switch data.Format {
 	case FormatSqlite:
-		return n.runStructPinSqlite(data, state, pin)
+		return n.runStructPinSqlite(data, pin)
 	default:
 		return fmt.Errorf("go node: Unknown format \"%v\"", data.Format)
 	}
 }
 
-func (n *goNode) runStructPinSqlite(nodeData *goNodeData, state *pipeline.State, pin *pipeline.StructData) error {
+func (n *goNode) runStructPinSqlite(nodeData *goNodeData, pin *pipeline.StructData) error {
 	/*
 		sn := newSqlNode(nodeData.TablePrefix, nodeData.DropTables)
 		output := &pipeline.RunOutput{}

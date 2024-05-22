@@ -120,7 +120,7 @@ func (d *genDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, err
 	defer rows.Close()
 	fieldCount := len(tags)
 	var dest = make([]any, fieldCount, fieldCount)
-	for i, _ := range dest {
+	for i := range dest {
 		dest[i] = new(any)
 	}
 
