@@ -104,8 +104,12 @@ func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, er
 	if err != nil {
 		return nil, err
 	}
-	s := "SELECT " + selectFields + " FROM " + meta.table + where + ";"
-	//	fmt.Println("QUERY 1", s)
+	s := "SELECT "
+	if req.Flags&doc.GetUnique != 0 {
+		s += "DISTINCT "
+	}
+	s += selectFields + " FROM " + meta.table + where + ";"
+	// fmt.Println("QUERY 1", s)
 	rows, err := d.db.Query(s)
 	if err != nil {
 		return nil, err

@@ -143,7 +143,7 @@ func getTagsAndFields(meta *_refMetadata, req doc.GetRequest) ([]string, []strin
 	if req.Fields == nil {
 		return meta.tags, meta.fields
 	}
-	tags := req.Fields.Fields()
+	tags := req.Fields.Names()
 	if len(tags) < 1 {
 		return meta.tags, meta.fields
 	}

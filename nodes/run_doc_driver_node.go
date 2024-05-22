@@ -165,6 +165,21 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 			resp, err := doc.Get[domain.Events](db, getreq)
 			return ReportEntry{Name: "Get Events", Response: resp, Err: err}
 		},
+		func(db *doc.DB) ReportEntry {
+			// test select unique values part 1
+			e := domain.Events{Name: "b", Value: "charm"}
+			req := doc.SetRequest[domain.Events]{Item: e, Filter: doc.FilterCreateItem}
+			resp, err := doc.Set(db, req)
+			return ReportEntry{Name: "Set Unique Events 1", Response: resp, Err: err}
+		},
+		func(db *doc.DB) ReportEntry {
+			// test select unique values part 1
+			getreq := doc.GetRequest{Flags: doc.GetUnique}
+			getreq.Condition, _ = db.Expr(`name = "b"`, nil).Compile()
+			getreq.Fields = doc.NewFields("name")
+			resp, err := doc.Get[domain.Events](db, getreq)
+			return ReportEntry{Name: "Get Unique Events 1", Response: resp, Err: err}
+		},
 	}
 
 	return fn
