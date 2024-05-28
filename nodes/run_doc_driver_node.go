@@ -6,6 +6,7 @@ import (
 
 	"github.com/hackborn/doc"
 	"github.com/hackborn/doc_drivers/domain"
+	"github.com/hackborn/doc_drivers/domain2"
 	"github.com/hackborn/doc_drivers/registry"
 	"github.com/hackborn/onefunc/pipeline"
 )
@@ -179,6 +180,21 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 			getreq.Fields = doc.NewFields("name")
 			resp, err := doc.Get[domain.Events](db, getreq)
 			return ReportEntry{Name: "Get Unique Events 1", Response: resp, Err: err}
+		},
+		func(db *doc.DB) ReportEntry {
+			// test serialized writing
+			value := map[string]string{"color": "red", "theme": "dark"}
+			setting := domain2.UiSetting{Name: "ui", Value: value}
+			req := doc.SetRequest[domain2.UiSetting]{Item: setting}
+			resp, err := doc.Set(db, req)
+			return ReportEntry{Name: "Set Ui Setting 1", Response: resp, Err: err}
+		},
+		func(db *doc.DB) ReportEntry {
+			// test serialized reading
+			getreq := doc.GetRequest{}
+			getreq.Condition, _ = db.Expr(`name = "ui"`, nil).Compile()
+			resp, err := doc.Get[domain2.UiSetting](db, getreq)
+			return ReportEntry{Name: "Get Ui Setting", Response: resp, Err: err}
 		},
 	}
 

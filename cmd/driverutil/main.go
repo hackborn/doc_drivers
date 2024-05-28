@@ -58,6 +58,8 @@ func makeEnv(env map[string]any, f registry.Factory) map[string]any {
 	return env
 }
 
+//local matches [../../domain/company.go ../../domain/events.go ../../domain/filing.go ../../domain/settings.go] <nil>
+
 func getBackend() (registry.Factory, error) {
 	backendNames := registry.Names()
 	if len(backendNames) < 1 {
