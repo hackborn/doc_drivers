@@ -165,12 +165,30 @@ func makeTableMetadata(pin *pipeline.StructData, md *metadata, eb oferrors.Block
 
 // convertToLocal converts a parsed tag to struct field and parsed key.
 func convertToLocal(f pipeline.StructField, parsed parsedTag) (structField, *parsedKey) {
-	sf := structField{Tag: parsed.name, Field: f.Name, Type: f.Type}
+	sf := structField{Tag: parsed.name, Field: f.Name}
+	sf.Type = primitiveFieldType(f.Type)
 	var key *parsedKey
 	if parsed.hasKey {
 		key = &parsedKey{name: parsed.keyGroup, position: parsed.keyIndex}
 	}
 	return sf, key
+}
+
+// primitiveFieldType will convert all field types to known primitives,
+// or an unknown type to kick off the serialization.
+func primitiveFieldType(ft string) string {
+	switch ft {
+	case "bool":
+		return ft
+	case "int", "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64":
+		return ft
+	case "float", "float32", "float64":
+		return ft
+	case "string":
+		return ft
+	default:
+		return pipeline.UnknownType
+	}
 }
 
 // keySpecList is the ordered list of key metadata.

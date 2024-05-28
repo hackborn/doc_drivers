@@ -77,7 +77,6 @@ func (n *sqlNode) makeDefinitionPin(data *sqlNodeData, state *pipeline.State, pi
 func (n *sqlNode) makeDefinitionCols(md metadata, eb oferrors.Block) string {
 	sb := ofstrings.GetWriter(eb)
 	defer ofstrings.PutWriter(sb)
-
 	sb.WriteString("\tcols: []{{.Prefix}}SqlTableCol{\n")
 	keys := md.KeySpecs()
 	for _, field := range md.Fields {
@@ -148,9 +147,9 @@ func convertGoTypeToSQLType(goType string) string {
 	switch goType {
 	case "string":
 		return "VARCHAR(255)"
-	case "int", "int64":
+	case "int", "int8", "uint8", "int32", "uint32", "int64", "uint64":
 		return sqlInteger
-	case "float", "float64":
+	case "float", "float32", "float64":
 		return "FLOAT"
 	case "bool":
 		return "BOOLEAN"
