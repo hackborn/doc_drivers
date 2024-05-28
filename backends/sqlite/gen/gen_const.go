@@ -24,7 +24,19 @@ const (
 
 var (
 	genTableDefs = map[string]genSqlTableDef{
-		`Company`: {
+		`CollectionSetting`: {
+			cols: []genSqlTableCol{
+				{`name`, `VARCHAR(255)`, ``, 0},
+				{`value`, `TEXT`, `json`, 0},
+			},
+			create: `DROP TABLE IF EXISTS gensettings;
+CREATE TABLE IF NOT EXISTS gensettings (
+	name VARCHAR(255) NOT NULL,
+	value TEXT,
+	PRIMARY KEY (name)
+);
+`,
+		}, `Company`: {
 			cols: []genSqlTableCol{
 				{`id`, `VARCHAR(255)`, ``, 0},
 				{`name`, `VARCHAR(255)`, ``, 0},
@@ -76,18 +88,6 @@ CREATE TABLE IF NOT EXISTS genfiling (
 	PRIMARY KEY (ticker,end,form)
 );
 `,
-		}, `CollectionSetting`: {
-			cols: []genSqlTableCol{
-				{`name`, `VARCHAR(255)`, ``, 0},
-				{`value`, `TEXT`, `json`, 0},
-			},
-			create: `DROP TABLE IF EXISTS gensettings;
-CREATE TABLE IF NOT EXISTS gensettings (
-	name VARCHAR(255) NOT NULL,
-	value TEXT,
-	PRIMARY KEY (name)
-);
-`,
 		}, `UiSetting`: {
 			cols: []genSqlTableCol{
 				{`name`, `VARCHAR(255)`, ``, 0},
@@ -104,7 +104,35 @@ CREATE TABLE IF NOT EXISTS gensettings (
 	}
 
 	genMetadatas = map[string]*genMetadata{
-		`Events`: {
+		`CollectionSetting`: {
+			table:  "gensettings",
+			tags:   []string{"name", "value"},
+			fields: []string{"Name", "Value"},
+			keys: map[string]*genKeyMetadata{
+				"": {
+					tags:   []string{"name"},
+					fields: []string{"Name"},
+				},
+			},
+		}, `Company`: {
+			table:  "gencompany",
+			tags:   []string{"id", "name", "val", "fy"},
+			fields: []string{"Id", "Name", "Value", "FoundedYear"},
+			keys: map[string]*genKeyMetadata{
+				"": {
+					tags:   []string{"id"},
+					fields: []string{"Id"},
+				},
+				"b": {
+					tags:   []string{"name"},
+					fields: []string{"Name"},
+				},
+				"c": {
+					tags:   []string{"fy"},
+					fields: []string{"FoundedYear"},
+				},
+			},
+		}, `Events`: {
 			table:  "genevents",
 			tags:   []string{"time", "name", "value"},
 			fields: []string{"Time", "Name", "Value"},
@@ -124,16 +152,6 @@ CREATE TABLE IF NOT EXISTS gensettings (
 					fields: []string{"Ticker", "EndDate", "Form"},
 				},
 			},
-		}, `CollectionSetting`: {
-			table:  "gensettings",
-			tags:   []string{"name", "value"},
-			fields: []string{"Name", "Value"},
-			keys: map[string]*genKeyMetadata{
-				"": {
-					tags:   []string{"name"},
-					fields: []string{"Name"},
-				},
-			},
 		}, `UiSetting`: {
 			table:  "gensettings",
 			tags:   []string{"name", "value"},
@@ -142,24 +160,6 @@ CREATE TABLE IF NOT EXISTS gensettings (
 				"": {
 					tags:   []string{"name"},
 					fields: []string{"Name"},
-				},
-			},
-		}, `Company`: {
-			table:  "gencompany",
-			tags:   []string{"id", "name", "val", "fy"},
-			fields: []string{"Id", "Name", "Value", "FoundedYear"},
-			keys: map[string]*genKeyMetadata{
-				"b": {
-					tags:   []string{"name"},
-					fields: []string{"Name"},
-				},
-				"c": {
-					tags:   []string{"fy"},
-					fields: []string{"FoundedYear"},
-				},
-				"": {
-					tags:   []string{"id"},
-					fields: []string{"Id"},
 				},
 			},
 		},

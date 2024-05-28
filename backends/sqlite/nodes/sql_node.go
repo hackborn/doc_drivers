@@ -46,7 +46,9 @@ func (n *sqlNode) Run(state *pipeline.State, input pipeline.RunInput, output *pi
 				if err != nil {
 					return err
 				}
-				output.Pins = append(output.Pins, outpin)
+				if outpin.Payload != nil {
+					output.Pins = append(output.Pins, outpin)
+				}
 			}
 		}
 	}
@@ -54,11 +56,11 @@ func (n *sqlNode) Run(state *pipeline.State, input pipeline.RunInput, output *pi
 }
 
 func (n *sqlNode) makeDefinitionPin(data *sqlNodeData, state *pipeline.State, pin *pipeline.StructData) (pipeline.Pin, error) {
+	md, ok, err := makeMetadata(pin, data.TablePrefix)
+	if !ok {
+		return pipeline.Pin{}, nil
+	}
 	eb := &oferrors.FirstBlock{}
-	//	sb := ofstrings.GetWriter(eb)
-	//	defer ofstrings.PutWriter(sb)
-
-	md, err := makeMetadata(pin, data.TablePrefix)
 	eb.AddError(err)
 
 	cols := n.makeDefinitionCols(md, eb)

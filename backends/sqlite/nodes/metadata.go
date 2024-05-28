@@ -92,7 +92,8 @@ type parsedKey struct {
 
 // makeMetadata answers the results of parsing the struct
 // data, including the tags, into a parallel structure.
-func makeMetadata(pin *pipeline.StructData, tablePrefix string) (metadata, error) {
+// The bool is set to false if this metadata should be skipped.
+func makeMetadata(pin *pipeline.StructData, tablePrefix string) (metadata, bool, error) {
 	eb := oferrors.FirstBlock{}
 	md := metadata{Name: pin.Name}
 	md.Keys = make(map[string][]structKey)
@@ -140,8 +141,11 @@ func makeMetadata(pin *pipeline.StructData, tablePrefix string) (metadata, error
 		md.Keys[k] = value
 	}
 	makeTableMetadata(pin, &md, &eb)
+	if md.Name == "-" {
+		return metadata{}, false, eb.Err
+	}
 	md.Name = tablePrefix + md.Name
-	return md, eb.Err
+	return md, true, eb.Err
 }
 
 func makeTableMetadata(pin *pipeline.StructData, md *metadata, eb oferrors.Block) {

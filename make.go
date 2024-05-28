@@ -17,6 +17,7 @@ func MakeDriver(settings MakeDriverSettings) error {
 	}
 	env := map[string]any{
 		"$load":        settings.LoadGlob,
+		"$loadsep":     settings.LoadSeparator,
 		"$save":        settings.SavePath,
 		"$pkg":         settings.Pkg,
 		"$prefix":      settings.Prefix,
@@ -35,6 +36,15 @@ type MakeDriverSettings struct {
 	// LoadGlob is a glob to a folder containing
 	// domain classes that will be used to generate the driver.
 	LoadGlob string
+
+	// LoadSeparator is an optional separator string used
+	// to split the LoadGlob if you want to provide multiple
+	// globs.
+	// Example:
+	// LoadSeparator=";"
+	// LoadGlob="/path/to/1;/path/to/2" will be evaulated
+	// as two separate paths and the results combined.
+	LoadSeparator string
 
 	// SavePath is a filepath to a folder where the new
 	// driver will be saved.

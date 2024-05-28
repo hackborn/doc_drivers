@@ -6,6 +6,7 @@ import (
 	"go/format"
 	"io/fs"
 	"path"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -141,7 +142,11 @@ func (n *goNode) runStructPinSqlite(nodeData *goNodeData, pin *pipeline.StructDa
 
 	// Metadata
 	eb := errors.FirstBlock{}
-	nodeData.metadata[pin.Name] = n.makeMetadataValue(nodeData, pin, &eb)
+	content := n.makeMetadataValue(nodeData, pin, &eb)
+	if content == "" {
+		return nil
+	}
+	nodeData.metadata[pin.Name] = content
 	if eb.Err != nil {
 		return eb.Err
 	}
@@ -163,13 +168,17 @@ func (n *goNode) runStructPinSqlite(nodeData *goNodeData, pin *pipeline.StructDa
 }
 
 func (n *goNode) makeMetadataValue(nodeData *goNodeData, pin *pipeline.StructData, eb errors.Block) string {
-	w := ofstrings.GetWriter(eb)
-	defer ofstrings.PutWriter(w)
-	ca := ofstrings.CompileArgs{Quote: "\"", Separator: ",", Eb: eb}
-	md, err := makeMetadata(pin, nodeData.TablePrefix)
+	md, ok, err := makeMetadata(pin, nodeData.TablePrefix)
+	if !ok {
+		return ""
+	}
 	eb.AddError(err)
 	fn := md.FieldNames()
 	tn := md.TagNames()
+
+	w := ofstrings.GetWriter(eb)
+	defer ofstrings.PutWriter(w)
+	ca := ofstrings.CompileArgs{Quote: "\"", Separator: ",", Eb: eb}
 
 	w.WriteString("{\n")
 	w.WriteString("\t\t\ttable: \"" + md.Name + "\",\n")
@@ -242,11 +251,17 @@ func (n *goNode) makeVars(nodeData *goNodeData) (map[string]any, error) {
 	for k, v := range nodeData.definitions {
 		tableDefs = append(tableDefs, TableDef{Name: k, Statements: v})
 	}
+	slices.SortFunc(tableDefs, func(a, b TableDef) int {
+		return strings.Compare(a.Name, b.Name)
+	})
 	m["Tabledefs"] = tableDefs
 	var metadatas []MetadataDef
 	for k, v := range nodeData.metadata {
 		metadatas = append(metadatas, MetadataDef{Name: k, Value: v})
 	}
+	slices.SortFunc(metadatas, func(a, b MetadataDef) int {
+		return strings.Compare(a.Name, b.Name)
+	})
 	m["Metadata"] = metadatas
 	m["Datestamp"] = time.Now().Format(time.DateOnly)
 	return m, nil
