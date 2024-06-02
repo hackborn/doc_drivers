@@ -9,11 +9,10 @@ import (
 	"strings"
 
 	"github.com/hackborn/doc"
-	"github.com/hackborn/onefunc/assign"
 	"github.com/hackborn/onefunc/errors"
 	oferrors "github.com/hackborn/onefunc/errors"
-	"github.com/hackborn/onefunc/extract"
 	ofstrings "github.com/hackborn/onefunc/strings"
+	"github.com/hackborn/onefunc/values"
 )
 
 type {{.Prefix}}Driver struct {
@@ -58,7 +57,7 @@ func (d *{{.Prefix}}Driver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Op
 	handler := &fieldsAndValuesHandler{cols: cols, filter: req.GetFilter()}
 	ca1 := ofstrings.CompileArgs{Quote: "", Separator: ", ", Eb: eb}
 	ca2 := ofstrings.CompileArgs{Quote: {{.Prefix}}QuoteSz, Separator: ", ", Eb: eb}
-	extract.From(req.ItemAny(), extract.NewChain(meta.FieldsToTags(), handler))
+	values.Get(req.ItemAny(), values.NewChain(meta.FieldsToTags(), handler))
 	s := strings.ReplaceAll(statement, {{.Prefix}}FieldsVar, ofstrings.Compile(ca1, handler.fields...))
 	s = strings.ReplaceAll(s, {{.Prefix}}ValuesVar, ofstrings.Compile(ca2, handler.values...))
 	s = strings.ReplaceAll(s, {{.Prefix}}FieldValuesVar, makeExcludedFieldValues(eb, handler.fields))
@@ -124,7 +123,7 @@ func (d *{{.Prefix}}Driver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optio
 		dest[i] = new(any)
 	}
 
-	vreq := assign.ValuesRequest{
+	vreq := values.SetRequest{
 		FieldNames: fields,
 		NewValues:  dest,
 		Assigns:    assigns,
@@ -135,14 +134,14 @@ func (d *{{.Prefix}}Driver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optio
 			return nil, err
 		}
 		resp := a.New()
-		if err = assign.Values(vreq, resp); err != nil {
+		if err = values.Set(vreq, resp); err != nil {
 			return nil, err
 		}
 	}
 	return nil, nil
 }
 
-func (d *{{.Prefix}}Driver) prepareGet(req doc.GetRequest, a doc.Allocator) (*{{.Prefix}}Metadata, []string, []string, []assign.AssignFunc, error) {
+func (d *{{.Prefix}}Driver) prepareGet(req doc.GetRequest, a doc.Allocator) (*{{.Prefix}}Metadata, []string, []string, []values.SetFunc, error) {
 	tn := a.TypeName()
 	meta, ok := {{.Prefix}}Metadatas[tn]
 	if !ok {
@@ -170,8 +169,8 @@ func (d *{{.Prefix}}Driver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*
 		return nil, fmt.Errorf("missing primary key metadata for \"%v\"", a.TypeName())
 	}
 
-	opts := extract.SliceOpts{Assign: doc.AssignKeyword, Combine: doc.AndKeyword}
-	exprSlice := extract.AsSlice(req.ItemAny(), extract.NewChain(keys.FieldsToTags()), &opts)
+	opts := values.SliceOpts{Assign: doc.AssignKeyword, Combine: doc.AndKeyword}
+	exprSlice := values.GetAsSlice(req.ItemAny(), values.NewChain(keys.FieldsToTags()), &opts)
 	expr := ""
 	dexpr, err := doc.NewExpr(d.format, exprSlice...)
 	if err != nil {

@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/hackborn/onefunc/assign"
 	oferrors "github.com/hackborn/onefunc/errors"
+	"github.com/hackborn/onefunc/values"
 )
 
 type {{.Prefix}}SqlTableDef struct {
@@ -28,18 +28,18 @@ func (d *{{.Prefix}}SqlTableDef) Col(name string) ({{.Prefix}}SqlTableCol, bool)
 	return {{.Prefix}}SqlTableCol{}, false
 }
 
-func (d *{{.Prefix}}SqlTableDef) AssignsFor(tags []string) []assign.AssignFunc {
-	ans := make([]assign.AssignFunc, 0, len(tags))
+func (d *{{.Prefix}}SqlTableDef) AssignsFor(tags []string) []values.SetFunc {
+	ans := make([]values.SetFunc, 0, len(tags))
 	for _, tag := range tags {
 		ans = append(ans, d.assignForTag(tag, d.cols))
 	}
 	return ans
 }
 
-func (d *{{.Prefix}}SqlTableDef) assignForTag(tag string, cols []{{.Prefix}}SqlTableCol) assign.AssignFunc {
+func (d *{{.Prefix}}SqlTableDef) assignForTag(tag string, cols []{{.Prefix}}SqlTableCol) values.SetFunc {
 	switch d.formatForTag(tag, cols) {
 	case "json":
-		return assign.AssignJson
+		return values.SetJson
 	default:
 		return nil
 	}
