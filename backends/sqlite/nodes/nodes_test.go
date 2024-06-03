@@ -29,7 +29,7 @@ func TestMetadata(t *testing.T) {
 		{skipStruct, []string{`Fields/0/Field=Skip1`}, nil, fmt.Errorf("out-of-range because skip fields don't exist")},
 	}
 	for i, v := range table {
-		md, haveErr := makeMetadata(v.structData, "")
+		md, _, haveErr := makeMetadata(v.structData, "")
 		cmpErr := jacl.Run(md, v.cmp...)
 
 		if v.wantErr == nil && haveErr != nil {
