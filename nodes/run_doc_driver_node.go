@@ -174,7 +174,7 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 			return ReportEntry{Name: "Set Unique Events 1", Response: resp, Err: err}
 		},
 		func(db *doc.DB) ReportEntry {
-			// test select unique values part 1
+			// test select unique values part 2
 			getreq := doc.GetRequest{Flags: doc.GetUnique}
 			getreq.Condition, _ = db.Expr(`name = "b"`, nil).Compile()
 			getreq.Fields = doc.NewFields("name")

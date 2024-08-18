@@ -3,13 +3,15 @@ package main
 import (
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 
-	_ "github.com/hackborn/doc_drivers"
-	"github.com/hackborn/doc_drivers/registry"
 	oferrors "github.com/hackborn/onefunc/errors"
 	"github.com/hackborn/onefunc/pipeline"
 	"github.com/manifoldco/promptui"
+
+	_ "github.com/hackborn/doc_drivers"
+	"github.com/hackborn/doc_drivers/registry"
 )
 
 func main() {
@@ -65,6 +67,7 @@ func getBackend() (registry.Factory, error) {
 	if len(backendNames) < 1 {
 		return registry.Factory{}, fmt.Errorf("no backends available")
 	}
+	slices.Sort(backendNames)
 	prompt := promptui.Select{
 		Label: "Select a backend. Ctrl-C to quit",
 		Items: backendNames,

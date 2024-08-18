@@ -4,8 +4,9 @@ go 1.22.2
 
 require (
 	github.com/hackborn/doc v0.0.0-20240102045435-4e7f2dc63401
-	github.com/hackborn/onefunc v0.0.0-20240520184341-ed29fbc9673e
+	github.com/hackborn/onefunc v0.0.0-20240812203334-092f86067d44
 	github.com/manifoldco/promptui v0.9.0
+	go.etcd.io/bbolt v1.3.10
 	golang.org/x/text v0.3.8
 	modernc.org/sqlite v1.28.0
 )

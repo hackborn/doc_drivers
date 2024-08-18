@@ -1,6 +1,6 @@
 package domain
 
-// struct Filing represents a single filing for a company.
+// Filing represents a single filing for a company.
 type Filing struct {
 	Ticker string `doc:"key(,0)"`
 	// End date of the filing period.

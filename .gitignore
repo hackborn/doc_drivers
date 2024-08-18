@@ -14,8 +14,13 @@ cmd/driverutil/driverutil.exe
 .DS_Store
 
 # Almost everything in data directories
+backends/bbolt/data/*
+!backends/bbolt/data/README.md
 backends/sqlite/data/*
 !backends/sqlite/data/README.md
+
+# Driver artifacts
+cmd/driverutil/template_*.txt
 
 # Test binary, built with `go test -c`
 *.test

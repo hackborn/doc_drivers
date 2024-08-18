@@ -151,7 +151,7 @@ func (n *templateNode) processMetadata(c *makeTemplateContent) error {
 	}
 	s, e, ok := findContentRange(&c.Content, beginMetadata, endMetadata)
 	if !ok {
-		return fmt.Errorf("file \"" + c.Name + "\" is missing metadata cpmment")
+		return fmt.Errorf("file \"" + c.Name + "\" is missing metadata comment")
 	}
 	lines := c.Lines[:s]
 	lines = append(lines, metadataLine)

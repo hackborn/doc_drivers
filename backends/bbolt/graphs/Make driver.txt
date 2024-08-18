@@ -1,0 +1,16 @@
+graph (
+    load(Glob=$load,Separator=$loadsep)
+    -> struct(Tag="doc")
+    -> go(Pkg=$pkg, Prefix=$prefix, TablePrefix=$tableprefix, Flags=$flags)
+    -> save(Path=$save)
+)
+
+env (
+    $load="$pathroot/domain/*;$pathroot/domain2/*",
+    $loadsep=";",
+    $save="$pathroot/backends/bbolt/gen",
+    $pkg="bboltgendriver",
+    $prefix="gen"
+    $tableprefix=""
+    $flags="lowercase"
+)

@@ -3,6 +3,7 @@ package drivers
 import (
 	"reflect"
 
+	_ "github.com/hackborn/doc_drivers/backends/bbolt"
 	_ "github.com/hackborn/doc_drivers/backends/sqlite"
 	_ "github.com/hackborn/doc_drivers/nodes"
 	"github.com/hackborn/doc_drivers/registry"
