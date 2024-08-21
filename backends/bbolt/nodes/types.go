@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"cmp"
+	"fmt"
 	"strings"
 )
 
@@ -13,9 +14,22 @@ type MetadataDef struct {
 	NewConvStruct string
 }
 
+func (m MetadataDef) Validate() error {
+	if m.RootBucket == "" {
+		return fmt.Errorf("Metadata must have a root bucket")
+	}
+	if len(m.Buckets) < 1 {
+		return fmt.Errorf("Metadata must have at least one key tag")
+	}
+	return nil
+}
+
 type MetadataKeyDef struct {
 	DomainName string
 	BoltName   string
+	Ft         string
+	AutoInc    bool
+	Leaf       bool
 	keyInfo    *metadataKeyInfo
 }
 

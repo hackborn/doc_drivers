@@ -2,6 +2,7 @@ package nodes
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"go/format"
 	"slices"
@@ -82,6 +83,10 @@ func (n *goNode) Run(state *pipeline.State, input pipeline.RunInput, output *pip
 
 func (n *goNode) Flush(state *pipeline.State, output *pipeline.RunOutput) error {
 	data := state.NodeData.(*goNodeData)
+	err := n.flushValidate(data)
+	if err != nil {
+		return err
+	}
 	vars, err := n.flushMakeVars(data)
 	if err != nil {
 		return fmt.Errorf("go node err: %w", err)
@@ -148,6 +153,7 @@ func (n *goNode) runMetadataDef(data *goNodeData, pin *pipeline.StructData) (Met
 		jsonTag := data.casingFn(field.Name)
 		if field.Tag != "" {
 			pt, err := enc.ParseTag(field.Tag)
+			err = cmp.Or(err, pt.Validate())
 			if err != nil {
 				return md, jd, err
 			}
@@ -155,12 +161,24 @@ func (n *goNode) runMetadataDef(data *goNodeData, pin *pipeline.StructData) (Met
 				// Omit this field from the DB.
 				continue
 			} else if pt.HasKey {
+				if pt.AutoInc && field.RawType != "uint64" {
+					return md, jd, fmt.Errorf("Autoinc must be on uint64 type (%v/%v)", pin.Name, field.Name)
+				}
 				boltName := data.casingFn(field.Name)
 				if pt.Name != "" {
 					boltName = pt.Name
 				}
+				ft := "stringType"
+				if field.RawType == "uint64" {
+					ft = "uint64Type"
+				}
 				keyInfo := metadataKeyInfo{group: pt.KeyGroup, index: pt.KeyIndex}
-				key := MetadataKeyDef{DomainName: field.Name, BoltName: boltName, keyInfo: &keyInfo}
+				key := MetadataKeyDef{DomainName: field.Name,
+					BoltName: boltName,
+					Ft:       ft,
+					AutoInc:  pt.AutoInc,
+					keyInfo:  &keyInfo,
+				}
 				md.Buckets = append(md.Buckets, key)
 				// Since this is a key it shouldn't be in the json
 				jsonTag = ""
@@ -191,6 +209,24 @@ func (n *goNode) runMetadataDef(data *goNodeData, pin *pipeline.StructData) (Met
 	}
 
 	return md, jd, nil
+}
+
+func (n *goNode) flushValidate(nodeData *goNodeData) error {
+	for _, m := range nodeData.metadata {
+		err := m.Validate()
+		if err != nil {
+			return err
+		}
+		// Set the leaf value here. Keys are a leaf if they
+		// are the only key, or they are the final key and they
+		// auto increment.
+		if len(m.Buckets) == 1 {
+			m.Buckets[0].Leaf = true
+		} else if len(m.Buckets) > 1 && m.Buckets[len(m.Buckets)-1].AutoInc == true {
+			m.Buckets[len(m.Buckets)-1].Leaf = true
+		}
+	}
+	return nil
 }
 
 func (n *goNode) flushMakeVars(nodeData *goNodeData) (map[string]any, error) {
@@ -227,6 +263,9 @@ func (n *goNode) flushTemplates(nodeData *goNodeData, vars map[string]any, outpu
 		b, err := n.runTemplate(v, vars)
 		eb.AddError(err)
 		b, err = n.runFormat(b)
+		if err != nil {
+			err = fmt.Errorf("FILE %v: %w", k, err)
+		}
 		eb.AddError(err)
 		if err == nil {
 			name := prefix + k + ".go"

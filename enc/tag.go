@@ -15,6 +15,16 @@ type Tag struct {
 	HasKey   bool
 	KeyGroup string
 	KeyIndex int
+	// True if the autoinc tag is set. Indicates this value
+	// should be automatically set on item creation.
+	AutoInc bool
+}
+
+func (t Tag) Validate() error {
+	if t.AutoInc == true && t.HasKey == false {
+		return fmt.Errorf("Tag autoinc can only be set on keys")
+	}
+	return nil
 }
 
 // ParseTag parses a tag.
@@ -103,6 +113,8 @@ func (h *tagParserKeywordHandler) Handle(args tagParserArgs) {
 		h.ctx = &tagParserKeyHandler{}
 	case "format":
 		h.ctx = &tagParserFormatHandler{}
+	case "autoinc":
+		args.state.tag.AutoInc = true
 	default:
 		args.state.eb.AddError(fmt.Errorf("Unknown token \"%v\"", args.text))
 	}

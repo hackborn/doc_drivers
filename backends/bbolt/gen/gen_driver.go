@@ -19,6 +19,17 @@ type genDriver struct {
 	format doc.Format
 }
 
+func (d *genDriver) Private(a any) error {
+	switch t := a.(type) {
+	case string:
+		switch t {
+		case "print":
+			return d.print()
+		}
+	}
+	return nil
+}
+
 func (d *genDriver) Open(dataSourceName string) (doc.Driver, error) {
 	eb := &errors.FirstBlock{}
 	db, err := bolt.Open(dataSourceName, 0600, nil)
@@ -50,35 +61,33 @@ func (d *genDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional, 
 		return nil, err
 	}
 
-	tx, err := d.db.Begin(true)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	var lastBucket *bolt.Bucket
-	var lastErr error
-	for i := range len(data.bucketValues) {
+	err = d.db.Update(func(tx *bolt.Tx) error {
+		var lastBucket *bolt.Bucket
+		var lastErr error
+		for i := range len(data.bucketValues) {
+			if lastBucket == nil {
+				lastBucket, lastErr = tx.CreateBucketIfNotExists([]byte(data.bucketValues[i]))
+			} else {
+				lastBucket, lastErr = lastBucket.CreateBucketIfNotExists([]byte(data.bucketValues[i]))
+			}
+			if lastErr != nil {
+				return err
+			}
+		}
 		if lastBucket == nil {
-			lastBucket, lastErr = tx.CreateBucketIfNotExists([]byte(data.bucketValues[i]))
+			return fmt.Errorf("No bucket")
+		}
+
+		if data.autoinc {
+			id, err := lastBucket.NextSequence()
+			if err != nil {
+				return err
+			}
+			return lastBucket.Put(genItob(id), data.value)
 		} else {
-			lastBucket, lastErr = lastBucket.CreateBucketIfNotExists([]byte(data.bucketValues[i]))
+			return lastBucket.Put([]byte(data.key), data.value)
 		}
-		if lastErr != nil {
-			return nil, err
-		}
-	}
-	if lastBucket == nil {
-		return nil, fmt.Errorf("No bucket")
-	}
-
-	err = lastBucket.Put([]byte(data.key), data.value)
-	if err != nil {
-		return nil, err
-	}
-
-	// Commit the transaction.
-	err = tx.Commit()
+	})
 	return nil, err
 }
 
@@ -86,6 +95,7 @@ type setData struct {
 	meta         *genMetadata
 	bucketValues []string
 	key          string
+	autoinc      bool
 	value        []byte
 }
 
@@ -99,7 +109,7 @@ func (d *genDriver) prepareSet(req doc.SetRequestAny, a doc.Allocator) (setData,
 
 	h := newGetBucketValuesHandler(meta.rootBucket, meta.buckets)
 	values.Get(req.ItemAny(), h)
-	key, err := h.makeKey()
+	key, autoinc, err := h.makeKey()
 	//	fmt.Println("VALUES", h.values, "key", key)
 	if err != nil {
 		return ps, err
@@ -116,6 +126,7 @@ func (d *genDriver) prepareSet(req doc.SetRequestAny, a doc.Allocator) (setData,
 
 	ps.bucketValues = h.values
 	ps.key = key
+	ps.autoinc = autoinc
 	ps.value = dat
 	return ps, nil
 }
@@ -262,6 +273,41 @@ func (d *genDriver) prepareDelete(req doc.DeleteRequestAny, a doc.Allocator) (de
 		}
 	}
 	return del, nil
+}
+
+func (d *genDriver) print() error {
+	if d.db == nil {
+		return fmt.Errorf("No database")
+	}
+	err := d.db.View(func(tx *bolt.Tx) error {
+		c := tx.Cursor()
+		for k, _ := c.First(); k != nil; k, _ = c.Next() {
+			fmt.Printf("key=%s\n", k)
+			d.printBucket(1, tx, tx.Bucket(k))
+		}
+		return nil
+	})
+	return err
+}
+
+func (d *genDriver) printBucket(tabs int, tx *bolt.Tx, b *bolt.Bucket) {
+	if b == nil {
+		return
+	}
+	c := b.Cursor()
+	tabStr := ""
+	for i := 0; i < tabs; i++ {
+		tabStr += "\t"
+	}
+	for k, v := c.First(); k != nil; k, v = c.Next() {
+		fmt.Printf(tabStr)
+		if v == nil {
+			fmt.Printf("key=%s\n", k)
+			d.printBucket(tabs+1, tx, b.Bucket(k))
+		} else {
+			fmt.Printf("key=%s, value=%s\n", k, v)
+		}
+	}
 }
 
 // ---------------------------------------------------------

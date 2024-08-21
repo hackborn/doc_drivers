@@ -205,21 +205,9 @@ const (
 		"			rootBucket: \"{{.RootBucket}}\",\n" +
 		"			buckets: []{{$.Prefix}}KeyMetadata{\n" +
 		"{{range .Buckets}}" +
-		"				{domainName: \"{{.DomainName}}\", boltName: \"{{.BoltName}}\"},\n" +
+		"				{domainName: \"{{.DomainName}}\", boltName: \"{{.BoltName}}\", ft: {{.Ft}}, leaf: {{.Leaf}}, autoInc: {{.AutoInc}}},\n" +
 		"{{end}}" +
 		"			},\n" +
 		"			newConvStruct: func() any { return &{{.NewConvStruct}}{} },\n" +
 		"		},{{end}}"
 )
-
-/*
-`Filing`: {
-			rootBucket: "filing",
-			buckets: []_refKeyMetadata{
-				{domainName: "Ticker", boltName: "ticker"},
-				{domainName: "EndDate", boltName: "end"},
-				{domainName: "Form", boltName: "form"},
-			},
-			newConvStruct: func() any { return &_refJsonFiling{} },
-		},
-*/

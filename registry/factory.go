@@ -18,6 +18,10 @@ type Factory struct {
 	// Open gets called when the factory is opened.
 	Open OpenFunc
 
+	// Prepare allows factories to modify env vars
+	// before a graph is run.
+	Prepare PrepareRunFunc
+
 	graphEntries map[string]graphs.Entry
 	graphNames   []string
 }

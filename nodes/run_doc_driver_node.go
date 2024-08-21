@@ -136,6 +136,7 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 			setting := domain.CollectionSetting{Name: "favs", Value: value}
 			req := doc.SetRequest[domain.CollectionSetting]{Item: setting}
 			resp, err := doc.Set(db, req)
+			//			db.Private("print")
 			return ReportEntry{Name: "Set Setting 1", Response: resp, Err: err}
 		},
 		func(db *doc.DB) ReportEntry {

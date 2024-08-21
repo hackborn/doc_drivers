@@ -50,8 +50,24 @@ func (m *genMetadata) DomainKeys() []string {
 }
 
 type genKeyMetadata struct {
+	// domainName is the name of the field struct.
 	domainName string
-	boltName   string
+
+	// boltName is the name used for bbolt. It will either be
+	// the name assigned in a doc tag, the domainName, or the
+	// domainName modified in some way, i.e. through the lowercase flag.
+	boltName string
+
+	// Data type of this key.
+	ft fieldType
+
+	// leaf indicates this should be the key used to store the value,
+	// instead of a bucket. If leaf is false then the key will be a
+	// composite of all prior keys.
+	leaf bool
+
+	// autoInc indicates this is an automatically incrementing key.
+	autoInc bool
 }
 
 func genMakeDomainNames(keys []genKeyMetadata) []string {

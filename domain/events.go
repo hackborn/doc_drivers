@@ -2,7 +2,7 @@ package domain
 
 // Events stores a sequence of events.
 type Events struct {
-	Time  int64 `doc:"key"`
+	Time  uint64 `doc:"key, autoinc"`
 	Name  string
 	Value string
 

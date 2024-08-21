@@ -10,4 +10,8 @@ type OpenFunc func() error
 // NewDriverFunc returns a new instance of a doc.Driver.
 type NewDriverFunc func() doc.Driver
 
+// PrepareRunFunc provides factories a change to make any
+// changes before running a graph.
+type PrepareRunFunc func(f Factory, graphName string, vars map[string]any)
+
 type ProcessTemplateFunc func(*Content) error

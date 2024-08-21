@@ -4,6 +4,7 @@ package bboltgendriver
 // do not modify
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/hackborn/doc"
@@ -40,6 +41,13 @@ func (f *genFormat) Value(v interface{}) (string, error) {
 	return s, nil
 }
 
+// genItob returns an 8-byte big endian representation of v.
+func genItob(v uint64) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, v)
+	return b
+}
+
 func newGetBucketValuesHandler(rootBucket string, buckets []genKeyMetadata) *getBucketValuesHandler {
 	values := make([]string, len(buckets)+1)
 	values[0] = rootBucket
@@ -57,18 +65,27 @@ type getBucketValuesHandler struct {
 
 // makeKey combines the values into a single key, reporting an
 // error if anyone is missing.
-func (h *getBucketValuesHandler) makeKey() (string, error) {
+func (h *getBucketValuesHandler) makeKey() (string, bool, error) {
 	key := ""
 	for i, s := range h.values {
 		if s == "" {
-			return "", fmt.Errorf("Missing value for %v", h.buckets[i].domainName)
+			return "", false, fmt.Errorf("Missing value for %v", h.buckets[i-1].domainName)
 		}
 		if i > 0 {
 			key += "/"
 		}
 		key += s
+		// If this is a leaf, just use the leaf
+		if i > 0 && h.buckets[i-1].leaf {
+			fmt.Println("LEAF for", h.values, h.buckets[i-1], s)
+			autoinc := false
+			if h.buckets[i-1].autoInc == true {
+				autoinc = true
+			}
+			return s, autoinc, nil
+		}
 	}
-	return key, nil
+	return key, false, nil
 }
 
 func (h *getBucketValuesHandler) Handle(name string, value any) (string, any) {

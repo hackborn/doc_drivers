@@ -2,14 +2,15 @@ package sqlitebackend
 
 import (
 	"embed"
+	"os"
 	"path/filepath"
 
 	_ "modernc.org/sqlite"
 
 	"github.com/hackborn/doc"
-	"github.com/hackborn/doc_drivers/backends/sqlite/gen"
+	sqlitegendriver "github.com/hackborn/doc_drivers/backends/sqlite/gen"
 	"github.com/hackborn/doc_drivers/backends/sqlite/nodes"
-	"github.com/hackborn/doc_drivers/backends/sqlite/ref"
+	sqliterefdriver "github.com/hackborn/doc_drivers/backends/sqlite/ref"
 	"github.com/hackborn/doc_drivers/graphs"
 	"github.com/hackborn/doc_drivers/registry"
 	"github.com/hackborn/onefunc/errors"
@@ -45,6 +46,12 @@ func addGraphs(m map[string]graphs.Entry) {
 
 func newOpenFunc(f registry.Factory) func() error {
 	return func() error {
+		// This is just for development. Delete the database each time.
+		err := os.Remove(f.DbPath)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+
 		nodes.RegisterNodes()
 
 		// Make drivers accessible to nodes without going through the backend

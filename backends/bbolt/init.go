@@ -2,13 +2,12 @@ package bboltbackend
 
 import (
 	"embed"
+	"os"
 	"path/filepath"
 
 	"github.com/hackborn/doc"
 	"github.com/hackborn/onefunc/errors"
 	"github.com/hackborn/onefunc/pipeline"
-
-	//	"github.com/hackborn/onefunc/pipeline"
 
 	"github.com/hackborn/doc_drivers/backends/bbolt/nodes"
 	bboltrefdriver "github.com/hackborn/doc_drivers/backends/bbolt/ref"
@@ -31,6 +30,7 @@ func init() {
 	f.Name = bbolt
 	f.DbPath = dbpath
 	f.Open = newOpenFunc(f)
+	f.Prepare = newPrepareFunc()
 
 	errors.Panic(registry.Register(f))
 }
@@ -44,6 +44,12 @@ func addGraphs(m map[string]graphs.Entry) {
 
 func newOpenFunc(f registry.Factory) func() error {
 	return func() error {
+		// This is just for development. Delete the database each time.
+		err := os.Remove(f.DbPath)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+
 		nodes.RegisterNodes()
 
 		// Make drivers accessible to nodes without going through the backend
@@ -57,6 +63,11 @@ func newOpenFunc(f registry.Factory) func() error {
 		doc.Register("ref/"+nodes.FormatBbolt, refFn())
 		doc.Register("gen/"+nodes.FormatBbolt, genFn())
 		return nil
+	}
+}
+
+func newPrepareFunc() registry.PrepareRunFunc {
+	return func(f registry.Factory, graphName string, vars map[string]any) {
 	}
 }
 

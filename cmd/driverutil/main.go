@@ -31,14 +31,17 @@ func main() {
 	oferrors.LogFatal(err)
 }
 
-func run(graph string, f registry.Factory) error {
-	p, err := pipeline.Compile(graph)
+func run(graph Graph, f registry.Factory) error {
+	p, err := pipeline.Compile(graph.Expr)
 	if err != nil {
 		return err
 	}
 	// Supply the env vars
 	env := makeEnv(p.Env(), f)
-	_, err = pipeline.RunExpr(graph, nil, env)
+	if f.Prepare != nil {
+		f.Prepare(f, graph.Name, p.Env())
+	}
+	_, err = pipeline.RunExpr(graph.Expr, nil, env)
 	return err
 }
 
@@ -59,8 +62,6 @@ func makeEnv(env map[string]any, f registry.Factory) map[string]any {
 	env["$droptables"] = true
 	return env
 }
-
-//local matches [../../domain/company.go ../../domain/events.go ../../domain/filing.go ../../domain/settings.go] <nil>
 
 func getBackend() (registry.Factory, error) {
 	backendNames := registry.Names()
@@ -83,10 +84,10 @@ func getBackend() (registry.Factory, error) {
 	return registry.Open(backendName)
 }
 
-func getGraph(f registry.Factory) (string, error) {
+func getGraph(f registry.Factory) (Graph, error) {
 	graphNames := f.GraphNames()
 	if len(graphNames) < 1 {
-		return "", fmt.Errorf("no operations available")
+		return Graph{}, fmt.Errorf("no operations available")
 	}
 	prompt := promptui.Select{
 		Label: "Select an operation. Ctrl-C to quit",
@@ -95,16 +96,21 @@ func getGraph(f registry.Factory) (string, error) {
 	_, graphName, err := prompt.Run()
 	if err != nil {
 		if err.Error() == `^C` {
-			return "", quitErr
+			return Graph{}, quitErr
 		}
-		return "", fmt.Errorf("prompt error: %w", err)
+		return Graph{}, fmt.Errorf("prompt error: %w", err)
 	}
 
-	graph, err := f.Graph(graphName)
+	expr, err := f.Graph(graphName)
 	if err != nil {
-		return "", err
+		return Graph{}, err
 	}
-	return graph, nil
+	return Graph{Name: graphName, Expr: expr}, nil
+}
+
+type Graph struct {
+	Name string
+	Expr string
 }
 
 var quitErr = fmt.Errorf("quit")
