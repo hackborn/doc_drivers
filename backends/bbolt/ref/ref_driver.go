@@ -138,11 +138,11 @@ func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, er
 		if err != nil {
 			return err
 		}
-		item := it.next()
+		item := it.Next()
 		for item != nil {
-			item = it.next()
+			item = it.Next()
 		}
-		return it.err
+		return it.Err()
 	})
 	return nil, err
 }
@@ -335,20 +335,26 @@ func extractExpr(expr doc.Expr, dst any) error {
 // ---------------------------------------------------------
 // ITERATOR
 
+type getIterator interface {
+	Next() any
+	Err() error
+}
+
 func newGetIterator(meta *_refMetadata,
 	tx *bolt.Tx,
 	rootBucket string,
 	bucketNames []string,
-	a doc.Allocator) (*getIterator, error) {
+	a doc.Allocator) (getIterator, error) {
+
+	// Special case
+	if len(bucketNames) == 1 {
+		return newOneShotIterator(meta, tx, rootBucket, bucketNames[0], a)
+	}
 
 	// Get root bucket
 	b := tx.Bucket([]byte(rootBucket))
 	if b == nil {
 		return nil, fmt.Errorf("No root bucket %v", rootBucket)
-	}
-
-	if len(bucketNames) == 1 {
-		return newPrefilledIterator(meta, tx, rootBucket, b, bucketNames, a)
 	}
 
 	// Follow the existing buckets as far as we can before we have to iterate.
@@ -377,7 +383,7 @@ func newGetIterator(meta *_refMetadata,
 
 	req := values.SetRequest{FieldNames: meta.DomainKeys(),
 		NewValues: make([]any, len(meta.DomainKeys()))}
-	return &getIterator{meta: meta,
+	return &searchGetIterator{meta: meta,
 		a:           a,
 		tx:          tx,
 		bucketNames: bucketNames,
@@ -387,29 +393,7 @@ func newGetIterator(meta *_refMetadata,
 		req:         req}, nil
 }
 
-// special case when the item is a key in the root bucket.
-func newPrefilledIterator(meta *_refMetadata,
-	tx *bolt.Tx,
-	rootBucket string,
-	b *bolt.Bucket,
-	bucketNames []string,
-	a doc.Allocator) (*getIterator, error) {
-	fmt.Println("NEW PREFILLED")
-	gi := &getIterator{meta: meta,
-		a:           a,
-		tx:          tx,
-		bucketNames: bucketNames,
-		stepIdx:     0,
-		badIdx:      -1,
-		oneShot:     true,
-		print:       false,
-	}
-	gib := getIterBucket{name: rootBucket, b: b}
-	gi.steps = append(gi.steps, gib)
-	return gi, nil
-}
-
-type getIterator struct {
+type searchGetIterator struct {
 	meta        *_refMetadata
 	a           doc.Allocator
 	tx          *bolt.Tx
@@ -419,11 +403,9 @@ type getIterator struct {
 	badIdx      int
 	req         values.SetRequest
 	err         error
-	oneShot     bool
-	print       bool
 }
 
-func (g *getIterator) next() any {
+func (g *searchGetIterator) Next() any {
 	k, v, err := g.boltNext()
 	for k == nil && err == nil {
 		k, v, err = g.boltNext()
@@ -439,42 +421,25 @@ func (g *getIterator) next() any {
 		g.err = cmp.Or(g.err, fmt.Errorf("Can't read keys for %v: step len %v should be %v", string(k), len(g.steps), len(g.meta.buckets)))
 		return nil
 	}
-	if !g.oneShot {
-		for i := 0; i < len(g.meta.buckets); i++ {
-			g.req.NewValues[i] = g.steps[i].name
-		}
-	}
 	values.Set(g.req, item)
 	return item
 }
 
-func (g *getIterator) boltNext() ([]byte, []byte, error) {
-	if g.print {
-		fmt.Println("boltNext step", g.stepIdx, "bad", g.badIdx)
-	}
+func (g *searchGetIterator) Err() error {
+	return g.err
+}
+
+func (g *searchGetIterator) boltNext() ([]byte, []byte, error) {
 	if g.stepIdx <= g.badIdx {
 		return nil, nil, errFinished
 	}
 
-	if g.print {
-		fmt.Println("boltNext idx", g.stepIdx)
-	}
 	gbi := g.steps[g.stepIdx]
 
 	// Handle first get
 	if gbi.c == nil {
-		if g.print {
-			fmt.Println("handle first")
-		}
 		gbi.c = gbi.b.Cursor()
 		k, v := gbi.c.First()
-		if g.print {
-			fmt.Println("handle first", k, v)
-		}
-		if g.oneShot {
-			g.stepIdx = g.badIdx
-			return k, v, nil
-		}
 		if k == nil {
 			g.stepIdx--
 			return nil, nil, nil
@@ -502,7 +467,7 @@ func (g *getIterator) boltNext() ([]byte, []byte, error) {
 	return k, v, nil
 }
 
-func (g *getIterator) handleBucket(k []byte, parent *bolt.Bucket) {
+func (g *searchGetIterator) handleBucket(k []byte, parent *bolt.Bucket) {
 	// TODO: This will iterate all bucket keys even if I have a specific
 	// one to select.
 	//	fmt.Println("bucketName at", g.stepIdx+1, "current key", string(k))
@@ -519,7 +484,7 @@ func (g *getIterator) handleBucket(k []byte, parent *bolt.Bucket) {
 	}
 }
 
-func (g *getIterator) bucketNameAt(i int) string {
+func (g *searchGetIterator) bucketNameAt(i int) string {
 	if i >= 0 && i < len(g.bucketNames) {
 		return g.bucketNames[i]
 	}
@@ -538,6 +503,52 @@ type getIterBucket struct {
 	// it's cursor (and also set to true for buckets that don't
 	// need iteration, such as those found in the initial path traversal.
 	finished bool
+}
+
+// special case when the item is a key in the root bucket.
+func newOneShotIterator(meta *_refMetadata,
+	tx *bolt.Tx,
+	rootBucket string,
+	key string,
+	a doc.Allocator) (getIterator, error) {
+	// Get root bucket
+	b := tx.Bucket([]byte(rootBucket))
+	if b == nil {
+		return nil, fmt.Errorf("No root bucket %v", rootBucket)
+	}
+
+	var item any
+	v := b.Get([]byte(key))
+	if v != nil {
+		_item, err := meta.fromDb(a.New(), v)
+		if err != nil {
+			return nil, err
+		}
+		// Set key field
+		req := values.SetRequest{FieldNames: meta.DomainKeys(),
+			NewValues: []any{key}}
+		values.Set(req, _item)
+
+		item = _item
+	}
+	return &oneShotIterator{item: item}, nil
+}
+
+type oneShotIterator struct {
+	item     any
+	finished bool
+}
+
+func (g *oneShotIterator) Next() any {
+	if g.finished {
+		return nil
+	}
+	g.finished = true
+	return g.item
+}
+
+func (g *oneShotIterator) Err() error {
+	return nil
 }
 
 // ---------------------------------------------------------

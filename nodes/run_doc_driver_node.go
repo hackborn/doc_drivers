@@ -131,22 +131,6 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 			return ReportEntry{Name: "GetOne Filing 2", Response: resp, Err: err}
 		},
 		func(db *doc.DB) ReportEntry {
-			// test serialized writing
-			value := []int64{4, 7, 8}
-			setting := domain.CollectionSetting{Name: "favs", Value: value}
-			req := doc.SetRequest[domain.CollectionSetting]{Item: setting}
-			resp, err := doc.Set(db, req)
-			//			db.Private("print")
-			return ReportEntry{Name: "Set Setting 1", Response: resp, Err: err}
-		},
-		func(db *doc.DB) ReportEntry {
-			// test serialized reading
-			getreq := doc.GetRequest{}
-			getreq.Condition, _ = db.Expr(`name = "favs"`, nil).Compile()
-			resp, err := doc.Get[domain.CollectionSetting](db, getreq)
-			return ReportEntry{Name: "Get Fav Setting", Response: resp, Err: err}
-		},
-		func(db *doc.DB) ReportEntry {
 			// test autoincrement part 1 (which hopefully is fully supported)
 			e := domain.Events{Name: "a", Value: "up"}
 			req := doc.SetRequest[domain.Events]{Item: e, Filter: doc.FilterCreateItem}
@@ -184,10 +168,26 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 		},
 		func(db *doc.DB) ReportEntry {
 			// test serialized writing
+			value := []int64{4, 7, 8}
+			setting := domain.CollectionSetting{Name: "favs", Value: value}
+			req := doc.SetRequest[domain.CollectionSetting]{Item: setting}
+			resp, err := doc.Set(db, req)
+			return ReportEntry{Name: "Set Setting 1", Response: resp, Err: err}
+		},
+		func(db *doc.DB) ReportEntry {
+			// test serialized reading
+			getreq := doc.GetRequest{}
+			getreq.Condition, _ = db.Expr(`name = "favs"`, nil).Compile()
+			resp, err := doc.Get[domain.CollectionSetting](db, getreq)
+			return ReportEntry{Name: "Get Fav Setting", Response: resp, Err: err}
+		},
+		func(db *doc.DB) ReportEntry {
+			// test serialized writing
 			value := map[string]string{"color": "red", "theme": "dark"}
 			setting := domain2.UiSetting{Name: "ui", Value: value}
 			req := doc.SetRequest[domain2.UiSetting]{Item: setting}
 			resp, err := doc.Set(db, req)
+			//			db.Private("print")
 			return ReportEntry{Name: "Set Ui Setting 1", Response: resp, Err: err}
 		},
 		func(db *doc.DB) ReportEntry {
