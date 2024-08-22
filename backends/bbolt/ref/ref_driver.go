@@ -427,8 +427,12 @@ func (g *wildcardIterator) step() ([]byte, []byte, error) {
 		// deep then this has to be a single composite key into the current bucket.
 		if len(g.steps) > len(g.p.nodes) || len(g.p.nodes) == 1 {
 			//			fmt.Println(tabs, "getting an item and popping")
+			if idx < len(g.p.nodes) {
+				step.key = g.p.nodes[idx].value
+			}
+			k := g.key()
 			g.popStep()
-			return g.getStep(currentBucket, g.key())
+			return g.getStep(currentBucket, k)
 		}
 		if step.finished {
 			g.popStep()
@@ -526,6 +530,9 @@ func (g *wildcardIterator) bucket() *bolt.Bucket {
 func (g *wildcardIterator) key() boltKey {
 	var k boltKey
 	for i, step := range g.steps {
+		if i >= len(g.p.nodes) {
+			return k
+		}
 		node := g.p.nodes[i]
 		if step.key == nil {
 			g.err = cmp.Or(g.err, fmt.Errorf("missing key for %v", node.domainName))

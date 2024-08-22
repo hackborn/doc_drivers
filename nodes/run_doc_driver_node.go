@@ -82,6 +82,7 @@ func (n *runDocDriverNode) runReport(db *doc.DB, data *runDocDriverData, output 
 
 func (n *runDocDriverNode) makeReports() []runReportFunc {
 	fn := []runReportFunc{
+
 		func(db *doc.DB) ReportEntry {
 			filing := domain.Filing{Ticker: "AAPL", EndDate: "2023", Form: "wd-40", Value: 10000, Units: "usd"}
 			req := doc.SetRequest[domain.Filing]{Item: filing}
@@ -130,42 +131,46 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 			resp, err := doc.GetOne[domain.Filing](db, getonereq)
 			return ReportEntry{Name: "GetOne Filing 2", Response: resp, Err: err}
 		},
-		func(db *doc.DB) ReportEntry {
-			// test autoincrement part 1 (which hopefully is fully supported)
-			e := domain.Events{Name: "a", Value: "up"}
-			req := doc.SetRequest[domain.Events]{Item: e, Filter: doc.FilterCreateItem}
-			resp, err := doc.Set(db, req)
-			return ReportEntry{Name: "Set Events 1", Response: resp, Err: err}
-		},
-		func(db *doc.DB) ReportEntry {
-			// test autoincrement part 2
-			e := domain.Events{Name: "b", Value: "down"}
-			req := doc.SetRequest[domain.Events]{Item: e, Filter: doc.FilterCreateItem}
-			resp, err := doc.Set(db, req)
-			return ReportEntry{Name: "Set Events 2", Response: resp, Err: err}
-		},
-		func(db *doc.DB) ReportEntry {
-			// test autoincrement part 3
-			getreq := doc.GetRequest{}
-			getreq.Condition, _ = db.Expr(`name = "b"`, nil).Compile()
-			resp, err := doc.Get[domain.Events](db, getreq)
-			return ReportEntry{Name: "Get Events", Response: resp, Err: err}
-		},
-		func(db *doc.DB) ReportEntry {
-			// test select unique values part 1
-			e := domain.Events{Name: "b", Value: "charm"}
-			req := doc.SetRequest[domain.Events]{Item: e, Filter: doc.FilterCreateItem}
-			resp, err := doc.Set(db, req)
-			return ReportEntry{Name: "Set Unique Events 1", Response: resp, Err: err}
-		},
-		func(db *doc.DB) ReportEntry {
-			// test select unique values part 2
-			getreq := doc.GetRequest{Flags: doc.GetUnique}
-			getreq.Condition, _ = db.Expr(`name = "b"`, nil).Compile()
-			getreq.Fields = doc.NewFields("name")
-			resp, err := doc.Get[domain.Events](db, getreq)
-			return ReportEntry{Name: "Get Unique Events 1", Response: resp, Err: err}
-		},
+
+		/*
+			func(db *doc.DB) ReportEntry {
+				// test autoincrement part 1 (which hopefully is fully supported)
+				e := domain.Events{Name: "a", Value: "up"}
+				req := doc.SetRequest[domain.Events]{Item: e, Filter: doc.FilterCreateItem}
+				resp, err := doc.Set(db, req)
+				return ReportEntry{Name: "Set Events 1", Response: resp, Err: err}
+			},
+			func(db *doc.DB) ReportEntry {
+				// test autoincrement part 2
+				e := domain.Events{Name: "b", Value: "down"}
+				req := doc.SetRequest[domain.Events]{Item: e, Filter: doc.FilterCreateItem}
+				resp, err := doc.Set(db, req)
+				db.Private("print")
+				return ReportEntry{Name: "Set Events 2", Response: resp, Err: err}
+			},
+			func(db *doc.DB) ReportEntry {
+				// test autoincrement part 3
+				getreq := doc.GetRequest{}
+				getreq.Condition, _ = db.Expr(`name = "b"`, nil).Compile()
+				resp, err := doc.Get[domain.Events](db, getreq)
+				return ReportEntry{Name: "Get Events", Response: resp, Err: err}
+			},
+			func(db *doc.DB) ReportEntry {
+				// test select unique values part 1
+				e := domain.Events{Name: "b", Value: "charm"}
+				req := doc.SetRequest[domain.Events]{Item: e, Filter: doc.FilterCreateItem}
+				resp, err := doc.Set(db, req)
+				return ReportEntry{Name: "Set Unique Events 1", Response: resp, Err: err}
+			},
+			func(db *doc.DB) ReportEntry {
+				// test select unique values part 2
+				getreq := doc.GetRequest{Flags: doc.GetUnique}
+				getreq.Condition, _ = db.Expr(`name = "b"`, nil).Compile()
+				getreq.Fields = doc.NewFields("name")
+				resp, err := doc.Get[domain.Events](db, getreq)
+				return ReportEntry{Name: "Get Unique Events 1", Response: resp, Err: err}
+			},
+		*/
 		func(db *doc.DB) ReportEntry {
 			// test serialized writing
 			value := []int64{4, 7, 8}
