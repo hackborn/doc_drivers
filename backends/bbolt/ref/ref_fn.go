@@ -38,6 +38,17 @@ func (f *_refFormat) Value(v interface{}) (string, error) {
 	return s, nil
 }
 
+// _refToBoltKey converts values into []byte values used as bolt keys.
+func _refToBoltKey(value any) (boltKey, bool) {
+	switch t := value.(type) {
+	case uint64:
+		return _refItob(t), true
+	case string:
+		return []byte(t), true
+	}
+	return nil, false
+}
+
 // _refItob returns an 8-byte big endian representation of v.
 func _refItob(v uint64) []byte {
 	b := make([]byte, 8)

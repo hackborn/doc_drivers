@@ -68,10 +68,10 @@ func (d *_refDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional,
 				return fmt.Errorf("Missing bucket")
 			}
 			if node.pt == bucketType {
-				if node.value == "" {
+				if node.value == nil {
 					return fmt.Errorf("No value for %v", node.domainName)
 				}
-				b, lastErr = b.CreateBucketIfNotExists([]byte(node.value))
+				b, lastErr = b.CreateBucketIfNotExists(node.value)
 			} else if node.pt == keyType && node.autoinc {
 				id, err := b.NextSequence()
 				if err != nil {
@@ -90,9 +90,9 @@ func (d *_refDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional,
 		if err != nil {
 			return err
 		}
-		err = b.Put([]byte(key), data.value)
+		err = b.Put(key, data.value)
 		return err
-		//		return b.Put([]byte(key), data.value)
+		//		return b.Put(key, data.value)
 	})
 
 	return nil, err
@@ -134,7 +134,8 @@ func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, er
 		return nil, err
 	}
 	err = d.db.View(func(tx *bolt.Tx) error {
-		it, err := newGetIterator(get.meta, tx, get.meta.rootBucket, get.keyValuesS, a)
+		//		it, err := newGetIterator(get.meta, tx, get.meta.rootBucket, get.keyValuesS, a)
+		it, err := newGetIterator(get.meta, tx, get.p, a)
 		if err != nil {
 			return err
 		}
@@ -149,6 +150,7 @@ func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, er
 
 type getData struct {
 	meta *_refMetadata
+	p    *path
 
 	// These slices are all the same size, which will be
 	// the metadata keys length. Store the various pieces of info needed.
@@ -180,13 +182,20 @@ func (d *_refDriver) prepareGet(req doc.GetRequest, a doc.Allocator) (getData, e
 	tn := a.TypeName()
 	meta, ok := _refMetadatas[tn]
 	get := getData{meta: meta}
+	if !ok {
+		return get, fmt.Errorf("missing metadata for \"%v\"", tn)
+	}
+	get.p = newPath(meta.rootBucket, meta.buckets)
+	//	values.Get(req.ItemAny(), ps.p)
+	err := extractExpr(req.Condition, get.p)
+
 	get.domainNames = meta.DomainKeys()
 	get.keyValuesA = make([]any, len(get.domainNames))
 	get.keyValuesS = make([]string, len(get.domainNames))
 	if !ok {
 		return get, fmt.Errorf("missing metadata for \"%v\"", tn)
 	}
-	err := extractExpr(req.Condition, &get)
+	err = extractExpr(req.Condition, &get)
 	return get, err
 }
 
@@ -203,6 +212,7 @@ func (d *_refDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Opt
 			return fmt.Errorf("no root %v", del.meta.rootBucket)
 		}
 		for i, _key := range del.keyValues {
+			fmt.Println("delete step", i, "key", _key)
 			key, err := keyBytes(_key)
 			if err != nil {
 				return err
@@ -214,8 +224,10 @@ func (d *_refDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Opt
 					compositeKey += "/"
 				}
 				compositeKey += fmt.Sprintf("%v", _key)
+				fmt.Println("DELETE key", compositeKey)
 				return b.Delete([]byte(compositeKey))
 			} else {
+				fmt.Println("delete get bucket for", string(key))
 				b = b.Bucket(key)
 				if b == nil {
 					return fmt.Errorf("no bucket for key", _key)
@@ -342,213 +354,242 @@ type getIterator interface {
 
 func newGetIterator(meta *_refMetadata,
 	tx *bolt.Tx,
-	rootBucket string,
-	bucketNames []string,
+	p *path,
 	a doc.Allocator) (getIterator, error) {
-
-	// Special case
-	if len(bucketNames) == 1 {
-		return newOneShotIterator(meta, tx, rootBucket, bucketNames[0], a)
-	}
-
 	// Get root bucket
-	b := tx.Bucket([]byte(rootBucket))
+	b := tx.Bucket([]byte(meta.rootBucket))
 	if b == nil {
-		return nil, fmt.Errorf("No root bucket %v", rootBucket)
+		return nil, fmt.Errorf("No root bucket %v", meta.rootBucket)
 	}
 
-	// Follow the existing buckets as far as we can before we have to iterate.
-	steps := []getIterBucket{}
-	stepIdx := -1
-	for i, name := range bucketNames {
-		if name == "" {
-			// wildcard, so break. iteration must be done below this.
-			break
-		}
-		b = b.Bucket([]byte(name))
-		if b == nil {
-			return nil, fmt.Errorf("No bucket %v", name)
-		}
-		stepIdx = i
-		gib := getIterBucket{name: name, b: b, rooted: true}
-		steps = append(steps, gib)
-	}
-
-	// Initialize the cursor on the last known bucket
-	if stepIdx < 0 {
-		return nil, fmt.Errorf("No buckets")
-	}
-	gib := steps[stepIdx]
-	steps[stepIdx] = gib
-
+	steps := make([]wildcardIteratorStep, 0, len(p.nodes))
+	steps = append(steps, wildcardIteratorStep{})
 	req := values.SetRequest{FieldNames: meta.DomainKeys(),
 		NewValues: make([]any, len(meta.DomainKeys()))}
-	return &searchGetIterator{meta: meta,
-		a:           a,
-		tx:          tx,
-		bucketNames: bucketNames,
-		steps:       steps,
-		stepIdx:     stepIdx,
-		badIdx:      stepIdx - 1,
-		req:         req}, nil
+	return &wildcardIterator{meta: meta,
+		a:     a,
+		tx:    tx,
+		b:     b,
+		p:     p,
+		steps: steps,
+		req:   req}, nil
 }
 
-type searchGetIterator struct {
-	meta        *_refMetadata
-	a           doc.Allocator
-	tx          *bolt.Tx
-	bucketNames []string
-	steps       []getIterBucket
-	stepIdx     int
-	badIdx      int
-	req         values.SetRequest
-	err         error
+// wildcardIterator allows missing key values, in which
+// case buckets are iterated.
+type wildcardIterator struct {
+	meta *_refMetadata
+	a    doc.Allocator
+	tx   *bolt.Tx
+	// root bucket
+	b     *bolt.Bucket
+	p     *path
+	steps []wildcardIteratorStep
+	req   values.SetRequest
+	err   error
 }
 
-func (g *searchGetIterator) Next() any {
-	k, v, err := g.boltNext()
+func (w *wildcardIterator) Next() any {
+	k, v, err := w.step()
 	for k == nil && err == nil {
-		k, v, err = g.boltNext()
+		k, v, err = w.step()
 	}
 	if err != nil {
+		if err != errFinished {
+			w.err = cmp.Or(w.err, err)
+		}
 		return nil
 	}
-	item, err := g.meta.fromDb(g.a.New(), v)
+	return w.domainItem(k, v)
+}
+
+// domainItem converst the key and value into a domain item.
+func (w *wildcardIterator) domainItem(k, v []byte) any {
+	item, err := w.meta.fromDb(w.a.New(), v)
 	//	fmt.Println("key", string(k), "value", string(v))
-	g.err = cmp.Or(g.err, err)
-	// How to do keys
-	if len(g.meta.buckets) != len(g.steps) {
-		g.err = cmp.Or(g.err, fmt.Errorf("Can't read keys for %v: step len %v should be %v", string(k), len(g.steps), len(g.meta.buckets)))
-		return nil
+	w.err = cmp.Or(w.err, err)
+	// Set the keys. The values should be in the steps.
+	for i, node := range w.p.nodes {
+		if i < len(w.req.NewValues) {
+			var value any
+			if i < len(w.steps) {
+				if node.ft == stringType {
+					value = string(w.steps[i].key)
+				}
+			}
+			w.req.NewValues[i] = value
+		}
 	}
-	values.Set(g.req, item)
+	values.Set(w.req, item)
 	return item
 }
 
-func (g *searchGetIterator) Err() error {
+func (g *wildcardIterator) Err() error {
 	return g.err
 }
 
-func (g *searchGetIterator) boltNext() ([]byte, []byte, error) {
-	if g.stepIdx <= g.badIdx {
+func (g *wildcardIterator) step() ([]byte, []byte, error) {
+	/*
+		tabs := ""
+		for range g.steps {
+			tabs += "\t"
+		}
+		fmt.Println(tabs, "step a")
+	*/
+	if len(g.steps) < 1 {
 		return nil, nil, errFinished
 	}
 
-	gbi := g.steps[g.stepIdx]
+	idx := len(g.steps) - 1
+	step := &g.steps[idx]
+	//	fmt.Println(tabs, "step b type", step.stepType, "idx", idx)
+	switch step.stepType {
+	case initStep:
+		// always need a current bucket to operate on
+		currentBucket := g.bucket()
+		//		fmt.Println(tabs, "step c bucket", currentBucket)
+		if currentBucket == nil {
+			return nil, nil, fmt.Errorf("init step missing bucket")
+		}
 
-	// Handle first get
-	if gbi.c == nil {
-		gbi.c = gbi.b.Cursor()
-		k, v := gbi.c.First()
-		if k == nil {
-			g.stepIdx--
+		// If we're a) past the path or b) the path is only 1 level
+		// deep then this has to be a single composite key into the current bucket.
+		if len(g.steps) > len(g.p.nodes) || len(g.p.nodes) == 1 {
+			//			fmt.Println(tabs, "getting an item and popping")
+			g.popStep()
+			return g.getStep(currentBucket, g.key())
+		}
+		if step.finished {
+			g.popStep()
 			return nil, nil, nil
 		}
-		g.steps[g.stepIdx] = gbi
-		// Handle buckets
-		if v == nil {
-			g.handleBucket(k, gbi.b)
+		// Handle keys (leaf)
+		node := g.p.nodes[idx]
+		if node.leaf {
+			g.popStep()
+			return g.getStep(currentBucket, g.key())
+		}
+		// Handle buckets - direct
+		//		fmt.Println(tabs, "step d key", node.value)
+		if node.value != nil {
+			//			fmt.Println(tabs, "step e direct key", node.value)
+			step.key = node.value
+			step.finished = true
+			step.b = currentBucket.Bucket(step.key)
+			if step.b == nil {
+				//				fmt.Println(tabs, "get bucket for key", string(step.key))
+				return nil, nil, fmt.Errorf("direct bucket missing bucket")
+			}
+			g.steps = append(g.steps, wildcardIteratorStep{})
 			return nil, nil, nil
 		}
-		return k, v, nil
+		// Handle buckets - wildcard
+		step.stepType = cursorStep
+		step.c = currentBucket.Cursor()
+		k, v := step.c.First()
+		//		fmt.Println(tabs, "cursor first", string(k))
+		return g.cursorStep(k, v, step)
+	case cursorStep:
+		k, v := step.c.Next()
+		//		fmt.Println(tabs, "cursor step", string(k))
+		return g.cursorStep(k, v, step)
 	}
+	// Shouldn't reach here
+	g.err = cmp.Or(g.err, fmt.Errorf("fell through step loop"))
+	return nil, nil, nil
+}
 
-	// Handle next get
-	k, v := gbi.c.Next()
+func (g *wildcardIterator) getStep(b *bolt.Bucket, k boltKey) ([]byte, []byte, error) {
+	if b == nil {
+		return nil, nil, fmt.Errorf("getStep missing bucket")
+	}
 	if k == nil {
-		g.stepIdx--
-		return nil, nil, nil
+		return nil, nil, fmt.Errorf("getStep missing key")
 	}
-	// Handle buckets
-	if v == nil {
-		g.handleBucket(k, gbi.b)
-		return nil, nil, nil
-	}
-	return k, v, nil
+	return k, b.Get(k), nil
 }
 
-func (g *searchGetIterator) handleBucket(k []byte, parent *bolt.Bucket) {
-	// TODO: This will iterate all bucket keys even if I have a specific
-	// one to select.
-	//	fmt.Println("bucketName at", g.stepIdx+1, "current key", string(k))
-	sk := string(k)
-	match := g.bucketNameAt(g.stepIdx + 1)
-	//	fmt.Println("bucketName match", string(match))
-	if match == "" || match == sk {
-		b := parent.Bucket(k)
-		if b != nil {
-			next := getIterBucket{name: sk, b: b}
-			g.steps = append(g.steps, next)
-			g.stepIdx++
+func (g *wildcardIterator) cursorStep(k, v []byte, step *wildcardIteratorStep) ([]byte, []byte, error) {
+	if k == nil {
+		g.popStep()
+	} else if v == nil {
+		step.key = k
+		step.b = nil
+		b := g.bucket()
+		if b == nil {
+			return nil, nil, fmt.Errorf("cursor step missing parent bucket")
+		}
+		step.b = b.Bucket(k)
+		if step.b == nil {
+			return nil, nil, fmt.Errorf("cursor step can't find bucket")
+		}
+		g.steps = append(g.steps, wildcardIteratorStep{})
+	} else {
+		// I think I ignore these, I'm in a bucket and need to
+		// go a step deeper to find values.
+	}
+	return nil, nil, nil
+}
+
+func (g *wildcardIterator) popStep() {
+	if len(g.steps) > 0 {
+		g.steps = g.steps[:len(g.steps)-1]
+	}
+}
+
+// bucket answers the currently active bucket. This will
+// either be the bucket at the end of the steps or the
+// root bucket. nil for an error.
+func (g *wildcardIterator) bucket() *bolt.Bucket {
+	for i := len(g.steps); i > 0; i-- {
+		step := &g.steps[i-1]
+		if step.b != nil {
+			return step.b
 		}
 	}
+	return g.b
 }
 
-func (g *searchGetIterator) bucketNameAt(i int) string {
-	if i >= 0 && i < len(g.bucketNames) {
-		return g.bucketNames[i]
+// key answers the current key based on the path rules.
+// nil for error.
+func (g *wildcardIterator) key() boltKey {
+	var k boltKey
+	for i, step := range g.steps {
+		node := g.p.nodes[i]
+		if step.key == nil {
+			g.err = cmp.Or(g.err, fmt.Errorf("missing key for %v", node.domainName))
+			return nil
+		}
+		if node.leaf {
+			return step.key
+		}
+		if k != nil {
+			k = append(k, _refKeySep...)
+		}
+		k = append(k, step.key...)
 	}
-	return ""
+	return k
 }
 
-// getIterBucket is a single step in the key/bucket iteration.
-// It contains everything about the step: The bucket name, actual
-// bucket, iteration cursor, etc.
-type getIterBucket struct {
-	name   string
-	b      *bolt.Bucket
-	c      *bolt.Cursor
-	rooted bool
+type wildcardStepType int
+
+const (
+	initStep wildcardStepType = iota
+	cursorStep
+)
+
+type wildcardIteratorStep struct {
+	stepType wildcardStepType
+	//	nodeIdx  int
+	key boltKey
+	//	name     string
+	b *bolt.Bucket
+	c *bolt.Cursor
+	//	rooted bool
 	// finished is set to true once this bucket is done iterating
 	// it's cursor (and also set to true for buckets that don't
 	// need iteration, such as those found in the initial path traversal.
 	finished bool
-}
-
-// special case when the item is a key in the root bucket.
-func newOneShotIterator(meta *_refMetadata,
-	tx *bolt.Tx,
-	rootBucket string,
-	key string,
-	a doc.Allocator) (getIterator, error) {
-	// Get root bucket
-	b := tx.Bucket([]byte(rootBucket))
-	if b == nil {
-		return nil, fmt.Errorf("No root bucket %v", rootBucket)
-	}
-
-	var item any
-	v := b.Get([]byte(key))
-	if v != nil {
-		_item, err := meta.fromDb(a.New(), v)
-		if err != nil {
-			return nil, err
-		}
-		// Set key field
-		req := values.SetRequest{FieldNames: meta.DomainKeys(),
-			NewValues: []any{key}}
-		values.Set(req, _item)
-
-		item = _item
-	}
-	return &oneShotIterator{item: item}, nil
-}
-
-type oneShotIterator struct {
-	item     any
-	finished bool
-}
-
-func (g *oneShotIterator) Next() any {
-	if g.finished {
-		return nil
-	}
-	g.finished = true
-	return g.item
-}
-
-func (g *oneShotIterator) Err() error {
-	return nil
 }
 
 // ---------------------------------------------------------
@@ -564,7 +605,13 @@ const (
 func newPath(rootBucket string, buckets []_refKeyMetadata) *path {
 	nodes := make([]pathNode, 0, len(buckets))
 	for _, b := range buckets {
-		pn := pathNode{pt: bucketType, domainName: b.domainName, ft: b.ft, leaf: b.leaf, autoinc: b.autoInc}
+		pn := pathNode{pt: bucketType,
+			domainName: b.domainName,
+			boltName:   b.boltName,
+			ft:         b.ft,
+			leaf:       b.leaf,
+			autoinc:    b.autoInc,
+		}
 		if b.leaf {
 			pn.pt = keyType
 		}
@@ -577,8 +624,10 @@ type pathNode struct {
 	pt pathType
 	// domainName for the field
 	domainName string
+	boltName   string
 	// value -- name of the bucket or key
-	value   string
+	value boltKey
+	//	value   string
 	ft      fieldType
 	leaf    bool
 	autoinc bool
@@ -589,11 +638,13 @@ type path struct {
 	nodes      []pathNode
 }
 
+// Handle is used by the reflection system to extact my
+// node values from a domain object.
 func (p *path) Handle(name string, value any) (string, any) {
 	for i, b := range p.nodes {
 		if b.domainName == name {
-			if s, ok := value.(string); ok {
-				b.value = s
+			if key, ok := _refToBoltKey(value); ok {
+				b.value = key
 				p.nodes[i] = b
 			}
 			break
@@ -602,31 +653,48 @@ func (p *path) Handle(name string, value any) (string, any) {
 	return name, value
 }
 
+// BinaryConjunction is used by the expression parsing to
+// extract my node values from an expression.
+func (p *path) BinaryConjunction(keyword string) error {
+	if keyword != doc.AndKeyword {
+		return fmt.Errorf("Unsupported binary: %v", keyword)
+	}
+	return nil
+}
+
+// BinaryAssignment is used by the expression parsing to
+// extract my node values from an expression.
+func (p *path) BinaryAssignment(lhs, rhs string) error {
+	for i, node := range p.nodes {
+		if node.boltName == lhs {
+			if value, ok := _refToBoltKey(rhs); ok {
+				node.value = value
+				p.nodes[i] = node
+			}
+			//			fmt.Println("Extract", lhs, rhs, "value", node.value)
+		}
+	}
+	return nil
+}
+
 // makeKey returns a value to be used as the key in the database.
-func (p *path) makeKey() (string, error) {
+func (p *path) makeKey() (boltKey, error) {
 	// Validate
 	if len(p.nodes) < 1 {
-		return "", fmt.Errorf("No path nodes")
-	}
-
-	// If we end in a leaf, use that single value as the key.
-	tail := p.nodes[len(p.nodes)-1]
-	if tail.leaf {
-		if tail.value == "" {
-			return "", fmt.Errorf("No value for leaf key")
-		}
-		return tail.value, nil
+		return nil, fmt.Errorf("No path nodes")
 	}
 
 	// If we don't have a leaf then the key is a composite of
 	// all my buckets.
-	key := p.rootBucket
+	var key boltKey
 	for _, n := range p.nodes {
-		if n.value == "" {
-			return "", fmt.Errorf("Missing value for %v", n.domainName)
+		if n.value == nil {
+			return nil, fmt.Errorf("Missing value for %v", n.domainName)
 		}
-		key += "/"
-		key += n.value
+		if key != nil {
+			key = append(key, _refKeySep...)
+		}
+		key = append(key, n.value...)
 	}
 	return key, nil
 }

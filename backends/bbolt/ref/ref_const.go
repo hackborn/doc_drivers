@@ -1,5 +1,9 @@
 package bboltrefdriver
 
+type boltKey = []byte
+
+var _refKeySep = []byte("/")
+
 type fieldType uint8
 
 const (
