@@ -39,7 +39,15 @@ func (f *_refFormat) Value(v interface{}) (string, error) {
 }
 
 // _refToBoltKey converts values into []byte values used as bolt keys.
-func _refToBoltKey(value any) (boltKey, bool) {
+func _refToBoltKey(value any, ft fieldType) (boltKey, bool) {
+	// The expression parsing doesn't know the type of the
+	// values, so make sure they match.
+	if ft == stringType {
+		if _, ok := value.(string); !ok {
+			value = fmt.Sprintf("%v", value)
+		}
+	}
+
 	switch t := value.(type) {
 	case uint64:
 		return _refItob(t), true

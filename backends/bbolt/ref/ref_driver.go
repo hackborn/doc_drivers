@@ -186,7 +186,6 @@ func (d *_refDriver) prepareGet(req doc.GetRequest, a doc.Allocator) (getData, e
 		return get, fmt.Errorf("missing metadata for \"%v\"", tn)
 	}
 	get.p = newPath(meta.rootBucket, meta.buckets)
-	//	values.Get(req.ItemAny(), ps.p)
 	err := extractExpr(req.Condition, get.p)
 
 	get.domainNames = meta.DomainKeys()
@@ -204,60 +203,33 @@ func (d *_refDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Opt
 	if err != nil {
 		return nil, err
 	}
-	finalKeyIdx := len(del.keyValues) - 1
 	err = d.db.Update(func(tx *bolt.Tx) error {
-		compositeKey := ""
 		b := tx.Bucket([]byte(del.meta.rootBucket))
 		if b == nil {
-			return fmt.Errorf("no root %v", del.meta.rootBucket)
+			return fmt.Errorf("missing root bucket %v", del.meta.rootBucket)
 		}
-		for i, _key := range del.keyValues {
-			fmt.Println("delete step", i, "key", _key)
-			key, err := keyBytes(_key)
-			if err != nil {
-				return err
+		for i, node := range del.p.nodes {
+			if node.leaf {
+				return b.Delete([]byte(del.key))
 			}
-			if i == finalKeyIdx {
-				// TODO: Some keys will be a composite and some will use the leaf
-				// value, figure out the rules and abstract.
-				if compositeKey != "" {
-					compositeKey += "/"
-				}
-				compositeKey += fmt.Sprintf("%v", _key)
-				fmt.Println("DELETE key", compositeKey)
-				return b.Delete([]byte(compositeKey))
-			} else {
-				fmt.Println("delete get bucket for", string(key))
-				b = b.Bucket(key)
-				if b == nil {
-					return fmt.Errorf("no bucket for key", _key)
-				}
-				// TODO: Some keys will be a composite and some will use the leaf
-				// value, figure out the rules and abstract.
-				if compositeKey != "" {
-					compositeKey += "/"
-				}
-				compositeKey += fmt.Sprintf("%v", _key)
+			b = b.Bucket(node.value)
+			if b == nil {
+				return fmt.Errorf("missing bucket")
+			}
+
+			if i >= len(del.p.nodes)-1 {
+				return b.Delete([]byte(del.key))
 			}
 		}
-		return nil
+		return fmt.Errorf("Fell out of loop")
 	})
 	return nil, err
 }
 
 type deleteData struct {
 	meta *_refMetadata
-	// The associated values for each of the keys.
-	keyValues []any
-}
-
-func (d *deleteData) Handle(name string, value any) (string, any) {
-	for i, bucket := range d.meta.buckets {
-		if bucket.domainName == name {
-			d.keyValues[i] = value
-		}
-	}
-	return name, value
+	p    *path
+	key  boltKey
 }
 
 func (d *_refDriver) prepareDelete(req doc.DeleteRequestAny, a doc.Allocator) (deleteData, error) {
@@ -271,16 +243,14 @@ func (d *_refDriver) prepareDelete(req doc.DeleteRequestAny, a doc.Allocator) (d
 	if !ok {
 		return del, fmt.Errorf("missing metadata for \"%v\"", tn)
 	}
-	if len(meta.buckets) < 1 {
-		return del, fmt.Errorf("no keys for %v", tn)
+	del.p = newPath(meta.rootBucket, meta.buckets)
+	values.Get(item, del.p)
+	k, err := del.p.makeKey()
+	if err != nil {
+		return del, err
 	}
-	del.keyValues = make([]any, len(meta.buckets))
-	values.Get(item, &del)
-	for i, b := range meta.buckets {
-		if del.keyValues[i] == nil {
-			return del, fmt.Errorf("missing value for field %v", b.domainName)
-		}
-	}
+	del.key = k
+
 	return del, nil
 }
 
@@ -362,6 +332,7 @@ func newGetIterator(meta *_refMetadata,
 		return nil, fmt.Errorf("No root bucket %v", meta.rootBucket)
 	}
 
+	//	fmt.Println("GET PATH", *p)
 	steps := make([]wildcardIteratorStep, 0, len(p.nodes))
 	steps = append(steps, wildcardIteratorStep{})
 	req := values.SetRequest{FieldNames: meta.DomainKeys(),
@@ -391,7 +362,7 @@ type wildcardIterator struct {
 
 func (w *wildcardIterator) Next() any {
 	k, v, err := w.step()
-	for k == nil && err == nil {
+	for (len(k) < 1 || len(v) < 1) && err == nil {
 		k, v, err = w.step()
 	}
 	if err != nil {
@@ -641,11 +612,11 @@ type path struct {
 // Handle is used by the reflection system to extact my
 // node values from a domain object.
 func (p *path) Handle(name string, value any) (string, any) {
-	for i, b := range p.nodes {
-		if b.domainName == name {
-			if key, ok := _refToBoltKey(value); ok {
-				b.value = key
-				p.nodes[i] = b
+	for i, node := range p.nodes {
+		if node.domainName == name {
+			if key, ok := _refToBoltKey(value, node.ft); ok {
+				node.value = key
+				p.nodes[i] = node
 			}
 			break
 		}
@@ -664,10 +635,10 @@ func (p *path) BinaryConjunction(keyword string) error {
 
 // BinaryAssignment is used by the expression parsing to
 // extract my node values from an expression.
-func (p *path) BinaryAssignment(lhs, rhs string) error {
+func (p *path) BinaryAssignment(lhs string, rhs any) error {
 	for i, node := range p.nodes {
 		if node.boltName == lhs {
-			if value, ok := _refToBoltKey(rhs); ok {
+			if value, ok := _refToBoltKey(rhs, node.ft); ok {
 				node.value = value
 				p.nodes[i] = node
 			}
@@ -684,13 +655,17 @@ func (p *path) makeKey() (boltKey, error) {
 		return nil, fmt.Errorf("No path nodes")
 	}
 
-	// If we don't have a leaf then the key is a composite of
-	// all my buckets.
+	// The key is a composite of all my buckets.
 	var key boltKey
 	for _, n := range p.nodes {
 		if n.value == nil {
 			return nil, fmt.Errorf("Missing value for %v", n.domainName)
 		}
+		// If this is a leaf then it's the only key we use
+		if n.leaf {
+			return n.value, nil
+		}
+
 		if key != nil {
 			key = append(key, _refKeySep...)
 		}

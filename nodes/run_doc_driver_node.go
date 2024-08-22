@@ -121,9 +121,7 @@ func (n *runDocDriverNode) makeReports() []runReportFunc {
 		func(db *doc.DB) ReportEntry {
 			filing := domain.Filing{Ticker: "GOOG", EndDate: "2022", Form: "wd-40", Value: 10010, Units: "usd"}
 			delreq := doc.DeleteRequest[domain.Filing]{Item: filing}
-			db.Private("print")
 			resp, err := doc.Delete[domain.Filing](db, delreq)
-			db.Private("print")
 			return ReportEntry{Name: "Delete Filing 1", Response: resp, Err: err}
 		},
 		func(db *doc.DB) ReportEntry {
