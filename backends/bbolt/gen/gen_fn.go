@@ -41,6 +41,25 @@ func (f *genFormat) Value(v interface{}) (string, error) {
 	return s, nil
 }
 
+// genToBoltKey converts values into []byte values used as bolt keys.
+func genToBoltKey(value any, ft fieldType) (boltKey, bool) {
+	// The expression parsing doesn't know the type of the
+	// values, so make sure they match.
+	if ft == stringType {
+		if _, ok := value.(string); !ok {
+			value = fmt.Sprintf("%v", value)
+		}
+	}
+
+	switch t := value.(type) {
+	case uint64:
+		return genItob(t), true
+	case string:
+		return []byte(t), true
+	}
+	return nil, false
+}
+
 // genItob returns an 8-byte big endian representation of v.
 func genItob(v uint64) []byte {
 	b := make([]byte, 8)

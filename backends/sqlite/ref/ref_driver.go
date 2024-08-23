@@ -8,8 +8,8 @@ import (
 	"github.com/hackborn/doc"
 	"github.com/hackborn/onefunc/errors"
 	oferrors "github.com/hackborn/onefunc/errors"
+	"github.com/hackborn/onefunc/reflect"
 	ofstrings "github.com/hackborn/onefunc/strings"
-	"github.com/hackborn/onefunc/values"
 )
 
 type _refDriver struct {
@@ -54,7 +54,7 @@ func (d *_refDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional,
 	handler := &fieldsAndValuesHandler{cols: cols, filter: req.GetFilter()}
 	ca1 := ofstrings.CompileArgs{Quote: "", Separator: ", ", Eb: eb}
 	ca2 := ofstrings.CompileArgs{Quote: _refQuoteSz, Separator: ", ", Eb: eb}
-	values.Get(req.ItemAny(), values.NewChain(meta.FieldsToTags(), handler))
+	reflect.Get(req.ItemAny(), reflect.NewChain(meta.FieldsToTags(), handler))
 	s := strings.ReplaceAll(statement, _refFieldsVar, ofstrings.Compile(ca1, handler.fields...))
 	s = strings.ReplaceAll(s, _refValuesVar, ofstrings.Compile(ca2, handler.values...))
 	s = strings.ReplaceAll(s, _refFieldValuesVar, makeExcludedFieldValues(eb, handler.fields))
@@ -120,7 +120,7 @@ func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, er
 		dest[i] = new(any)
 	}
 
-	vreq := values.SetRequest{
+	vreq := reflect.SetRequest{
 		FieldNames: fields,
 		NewValues:  dest,
 		Assigns:    assigns,
@@ -131,14 +131,14 @@ func (d *_refDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, er
 			return nil, err
 		}
 		resp := a.New()
-		if err = values.Set(vreq, resp); err != nil {
+		if err = reflect.Set(vreq, resp); err != nil {
 			return nil, err
 		}
 	}
 	return nil, nil
 }
 
-func (d *_refDriver) prepareGet(req doc.GetRequest, a doc.Allocator) (*_refMetadata, []string, []string, []values.SetFunc, error) {
+func (d *_refDriver) prepareGet(req doc.GetRequest, a doc.Allocator) (*_refMetadata, []string, []string, []reflect.SetFunc, error) {
 	tn := a.TypeName()
 	meta, ok := _refMetadatas[tn]
 	if !ok {
@@ -166,8 +166,8 @@ func (d *_refDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Opt
 		return nil, fmt.Errorf("missing primary key metadata for \"%v\"", a.TypeName())
 	}
 
-	opts := values.SliceOpts{Assign: doc.AssignKeyword, Combine: doc.AndKeyword}
-	exprSlice := values.GetAsSlice(req.ItemAny(), values.NewChain(keys.FieldsToTags()), &opts)
+	opts := reflect.SliceOpts{Assign: doc.AssignKeyword, Combine: doc.AndKeyword}
+	exprSlice := reflect.GetAsSlice(req.ItemAny(), reflect.NewChain(keys.FieldsToTags()), &opts)
 	expr := ""
 	dexpr, err := doc.NewExpr(d.format, exprSlice...)
 	if err != nil {

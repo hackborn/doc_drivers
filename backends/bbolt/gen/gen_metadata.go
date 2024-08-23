@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"sync/atomic"
 
-	"github.com/hackborn/onefunc/values"
+	"github.com/hackborn/onefunc/reflect"
 )
 
 type genMetadataNewConvFunc func() any
@@ -25,7 +25,7 @@ type genMetadata struct {
 // metadata appropriate for the JSON schema for the database.
 func (m *genMetadata) toDb(src any) (any, error) {
 	dst := m.newConvStruct()
-	err := values.Copy(dst, src)
+	err := reflect.Copy(dst, src)
 	return dst, err
 }
 
@@ -36,7 +36,7 @@ func (m *genMetadata) fromDb(dst any, dbdata []byte) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = values.Copy(dst, src)
+	err = reflect.Copy(dst, src)
 	return dst, err
 }
 

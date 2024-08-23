@@ -7,7 +7,7 @@ import (
 
 	"github.com/hackborn/doc"
 	"github.com/hackborn/onefunc/errors"
-	"github.com/hackborn/onefunc/values"
+	"github.com/hackborn/onefunc/reflect"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -112,7 +112,7 @@ func (d *_refDriver) prepareSet(req doc.SetRequestAny, a doc.Allocator) (setData
 		return ps, fmt.Errorf("missing metadata for \"%v\"", tn)
 	}
 	ps.p = newPath(meta.rootBucket, meta.buckets)
-	values.Get(req.ItemAny(), ps.p)
+	reflect.Get(req.ItemAny(), ps.p)
 
 	// Marshal the data.
 	dbitem, err := meta.toDb(req.ItemAny())
@@ -244,7 +244,7 @@ func (d *_refDriver) prepareDelete(req doc.DeleteRequestAny, a doc.Allocator) (d
 		return del, fmt.Errorf("missing metadata for \"%v\"", tn)
 	}
 	del.p = newPath(meta.rootBucket, meta.buckets)
-	values.Get(item, del.p)
+	reflect.Get(item, del.p)
 	k, err := del.p.makeKey()
 	if err != nil {
 		return del, err
@@ -335,7 +335,7 @@ func newGetIterator(meta *_refMetadata,
 	//	fmt.Println("GET PATH", *p)
 	steps := make([]wildcardIteratorStep, 0, len(p.nodes))
 	steps = append(steps, wildcardIteratorStep{})
-	req := values.SetRequest{FieldNames: meta.DomainKeys(),
+	req := reflect.SetRequest{FieldNames: meta.DomainKeys(),
 		NewValues: make([]any, len(meta.DomainKeys()))}
 	return &wildcardIterator{meta: meta,
 		a:     a,
@@ -356,7 +356,7 @@ type wildcardIterator struct {
 	b     *bolt.Bucket
 	p     *path
 	steps []wildcardIteratorStep
-	req   values.SetRequest
+	req   reflect.SetRequest
 	err   error
 }
 
@@ -391,7 +391,7 @@ func (w *wildcardIterator) domainItem(k, v []byte) any {
 			w.req.NewValues[i] = value
 		}
 	}
-	values.Set(w.req, item)
+	reflect.Set(w.req, item)
 	return item
 }
 

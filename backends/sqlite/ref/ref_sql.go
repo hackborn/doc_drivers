@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	oferrors "github.com/hackborn/onefunc/errors"
-	"github.com/hackborn/onefunc/values"
+	ofreflect "github.com/hackborn/onefunc/reflect"
 )
 
 type _refSqlTableDef struct {
@@ -25,18 +25,18 @@ func (d *_refSqlTableDef) Col(name string) (_refSqlTableCol, bool) {
 	return _refSqlTableCol{}, false
 }
 
-func (d *_refSqlTableDef) AssignsFor(tags []string) []values.SetFunc {
-	ans := make([]values.SetFunc, 0, len(tags))
+func (d *_refSqlTableDef) AssignsFor(tags []string) []ofreflect.SetFunc {
+	ans := make([]ofreflect.SetFunc, 0, len(tags))
 	for _, tag := range tags {
 		ans = append(ans, d.assignForTag(tag, d.cols))
 	}
 	return ans
 }
 
-func (d *_refSqlTableDef) assignForTag(tag string, cols []_refSqlTableCol) values.SetFunc {
+func (d *_refSqlTableDef) assignForTag(tag string, cols []_refSqlTableCol) ofreflect.SetFunc {
 	switch d.formatForTag(tag, cols) {
 	case "json":
-		return values.SetJson
+		return ofreflect.SetJson
 	default:
 		return nil
 	}
