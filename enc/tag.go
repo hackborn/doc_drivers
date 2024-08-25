@@ -15,8 +15,10 @@ type Tag struct {
 	HasKey   bool
 	KeyGroup string
 	KeyIndex int
+	Flags    Flags
 	// True if the autoinc tag is set. Indicates this value
 	// should be automatically set on item creation.
+	// Deprecated, use flags
 	AutoInc bool
 }
 
@@ -27,11 +29,11 @@ func (t Tag) Validate() error {
 	return nil
 }
 
-// ParseTag parses a tag.
-func ParseTag(tag string) (Tag, error) {
+// ParseTag parses a tag expression.
+func ParseTag(expr string) (Tag, error) {
 	eb := &oferrors.FirstBlock{}
 	var lexer scanner.Scanner
-	lexer.Init(strings.NewReader(tag))
+	lexer.Init(strings.NewReader(expr))
 	//	lexer.Whitespace = 0
 	lexer.Mode = scanner.ScanChars | scanner.ScanFloats | scanner.ScanIdents | scanner.ScanInts | scanner.ScanRawStrings | scanner.ScanStrings
 	lexer.Error = func(s *scanner.Scanner, msg string) {
@@ -41,9 +43,12 @@ func ParseTag(tag string) (Tag, error) {
 	state.push(&tagParserKeywordHandler{})
 	args := tagParserArgs{state: state}
 	for tok := lexer.Scan(); tok != scanner.EOF; tok = lexer.Scan() {
-		// fmt.Println("TOK", tok, "name", scanner.TokenString(tok), "text", lexer.TokenText())
+		//		fmt.Println("TOK", tok, "name", scanner.TokenString(tok), "text", lexer.TokenText())
 		args.token, args.text = tok, lexer.TokenText()
 		state.handle(args)
+	}
+	for len(state.stack) > 0 {
+		state.pop()
 	}
 	return state.tag, eb.Err
 }
@@ -56,6 +61,8 @@ type tagParserArgs struct {
 
 // tagParserHandler defines a token handler.
 type tagParserHandler interface {
+	Start(*tagParserState)
+	End(*tagParserState)
 	Handle(tagParserArgs)
 }
 
@@ -79,6 +86,7 @@ func (s *tagParserState) push(h tagParserHandler) {
 	if h == nil {
 		s.eb.AddError(fmt.Errorf("No handler for keyword"))
 	} else {
+		h.Start(s)
 		s.stack = append(s.stack, h)
 	}
 }
@@ -87,13 +95,20 @@ func (s *tagParserState) pop() {
 	if len(s.stack) < 1 {
 		s.eb.AddError(fmt.Errorf("Popping empty stack"))
 	} else {
-		s.stack = s.stack[0 : len(s.stack)-1]
+		idx := len(s.stack) - 1
+		s.stack[idx].End(s)
+		s.stack = s.stack[0:idx]
 	}
 }
 
 // tagParserKeywordHandler handles the top-level keywords.
 type tagParserKeywordHandler struct {
-	ctx tagParserHandler
+}
+
+func (h *tagParserKeywordHandler) Start(*tagParserState) {
+}
+
+func (h *tagParserKeywordHandler) End(*tagParserState) {
 }
 
 func (h *tagParserKeywordHandler) Handle(args tagParserArgs) {
@@ -102,19 +117,16 @@ func (h *tagParserKeywordHandler) Handle(args tagParserArgs) {
 		// skip
 		args.state.tag.Name = args.text
 	case ",":
-		h.ctx = nil
-	case "(":
-		args.state.push(h.ctx)
-		h.ctx = nil
+		// This shouldn't be hit, it's always the wrapper
+		args.state.pop()
 	case "name":
-		h.ctx = &tagParserNameHandler{}
+		args.state.push(&tagParserHandlerWrapper{inner: &tagParserNameHandler{}})
 	case "key":
-		args.state.tag.HasKey = true
-		h.ctx = &tagParserKeyHandler{}
+		args.state.push(&tagParserHandlerWrapper{inner: &tagParserKeyHandler{}})
 	case "format":
-		h.ctx = &tagParserFormatHandler{}
+		args.state.push(&tagParserHandlerWrapper{inner: &tagParserFormatHandler{}})
 	case "autoinc":
-		args.state.tag.AutoInc = true
+		args.state.push(&tagParserHandlerWrapper{inner: &tagParserAutoincHandler{}})
 	default:
 		args.state.eb.AddError(fmt.Errorf("Unknown token \"%v\"", args.text))
 	}
@@ -122,6 +134,12 @@ func (h *tagParserKeywordHandler) Handle(args tagParserArgs) {
 
 // tagParserNameHandler handles the name.
 type tagParserNameHandler struct {
+}
+
+func (h *tagParserNameHandler) Start(*tagParserState) {
+}
+
+func (h *tagParserNameHandler) End(*tagParserState) {
 }
 
 func (h *tagParserNameHandler) Handle(args tagParserArgs) {
@@ -139,6 +157,12 @@ func (h *tagParserNameHandler) Handle(args tagParserArgs) {
 type tagParserFormatHandler struct {
 }
 
+func (h *tagParserFormatHandler) Start(*tagParserState) {
+}
+
+func (h *tagParserFormatHandler) End(*tagParserState) {
+}
+
 func (h *tagParserFormatHandler) Handle(args tagParserArgs) {
 	switch args.text {
 	case ")":
@@ -153,6 +177,13 @@ func (h *tagParserFormatHandler) Handle(args tagParserArgs) {
 // tagParserKeyHandler handles the key.
 type tagParserKeyHandler struct {
 	idx int
+}
+
+func (h *tagParserKeyHandler) Start(s *tagParserState) {
+	s.tag.HasKey = true
+}
+
+func (h *tagParserKeyHandler) End(*tagParserState) {
 }
 
 func (h *tagParserKeyHandler) Handle(args tagParserArgs) {
@@ -175,5 +206,58 @@ func (h *tagParserKeyHandler) Handle(args tagParserArgs) {
 		default:
 			args.state.eb.AddError(fmt.Errorf("Key index %v too high on token \"%v\"", h.idx, args.text))
 		}
+	}
+}
+
+// tagParserAutoincHandler handles the autoinc.
+type tagParserAutoincHandler struct {
+	flag Flags
+}
+
+func (h *tagParserAutoincHandler) Start(s *tagParserState) {
+	h.flag = FlagAutoIncGlobal
+	s.tag.AutoInc = true
+}
+
+func (h *tagParserAutoincHandler) End(s *tagParserState) {
+	s.tag.Flags |= h.flag
+}
+
+func (h *tagParserAutoincHandler) Handle(args tagParserArgs) {
+	t := strings.ToLower(args.text)
+	switch t {
+	case ")":
+		args.state.pop()
+	case "global":
+		h.flag = FlagAutoIncGlobal
+	case "local":
+		h.flag = FlagAutoIncLocal
+	}
+}
+
+// tagParserHandlerWrapper wraps a handler. This is installed
+// from the main keyword, and the item I wrap will be installed from parens.
+type tagParserHandlerWrapper struct {
+	inner  tagParserHandler
+	pushed bool
+}
+
+func (h *tagParserHandlerWrapper) Start(*tagParserState) {
+}
+
+func (h *tagParserHandlerWrapper) End(s *tagParserState) {
+	if !h.pushed {
+		h.inner.Start(s)
+		h.inner.End(s)
+	}
+}
+
+func (h *tagParserHandlerWrapper) Handle(args tagParserArgs) {
+	switch args.text {
+	case "(":
+		h.pushed = true
+		args.state.push(h.inner)
+	case ",":
+		args.state.pop()
 	}
 }
