@@ -19,14 +19,26 @@ type Tag struct {
 	// True if the autoinc tag is set. Indicates this value
 	// should be automatically set on item creation.
 	// Deprecated, use flags
-	AutoInc bool
+	//	AutoInc bool
 }
 
 func (t Tag) Validate() error {
-	if t.AutoInc == true && t.HasKey == false {
+	if t.Autoinc() && t.HasKey == false {
 		return fmt.Errorf("Tag autoinc can only be set on keys")
 	}
 	return nil
+}
+
+func (t Tag) Autoinc() bool {
+	return t.AutoincGlobal() || t.AutoincLocal()
+}
+
+func (t Tag) AutoincGlobal() bool {
+	return t.Flags&FlagAutoIncGlobal != 0
+}
+
+func (t Tag) AutoincLocal() bool {
+	return t.Flags&FlagAutoIncLocal != 0
 }
 
 // ParseTag parses a tag expression.
@@ -216,7 +228,6 @@ type tagParserAutoincHandler struct {
 
 func (h *tagParserAutoincHandler) Start(s *tagParserState) {
 	h.flag = FlagAutoIncGlobal
-	s.tag.AutoInc = true
 }
 
 func (h *tagParserAutoincHandler) End(s *tagParserState) {

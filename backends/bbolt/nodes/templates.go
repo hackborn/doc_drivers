@@ -205,7 +205,7 @@ const (
 		"			rootBucket: \"{{.RootBucket}}\",\n" +
 		"			buckets: []{{$.Prefix}}KeyMetadata{\n" +
 		"{{range .Buckets}}" +
-		"				{domainName: \"{{.DomainName}}\", boltName: \"{{.BoltName}}\", ft: {{.Ft}}, leaf: {{.Leaf}}, autoInc: {{.AutoInc}}},\n" +
+		"				{domainName: \"{{.DomainName}}\", boltName: \"{{.BoltName}}\", ft: {{.Ft}}, leaf: {{.Leaf}}, flags: {{.Flags}}},\n" +
 		"{{end}}" +
 		"			},\n" +
 		"			newConvStruct: func() any { return &{{.NewConvStruct}}{} },\n" +

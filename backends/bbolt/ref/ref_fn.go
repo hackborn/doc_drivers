@@ -63,3 +63,7 @@ func _refItob(v uint64) []byte {
 	binary.BigEndian.PutUint64(b, v)
 	return b
 }
+
+func _refBtoi(b []byte) uint64 {
+	return binary.BigEndian.Uint64(b)
+}

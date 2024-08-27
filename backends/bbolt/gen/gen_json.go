@@ -12,7 +12,6 @@ type genJsonCompany struct {
 }
 
 type genJsonEvents struct {
-	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 

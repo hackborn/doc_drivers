@@ -62,7 +62,8 @@ func (d *genDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional, 
 	}
 
 	err = d.db.Update(func(tx *bolt.Tx) error {
-		b, lastErr := tx.CreateBucketIfNotExists([]byte(data.p.rootBucket))
+		rootB, lastErr := tx.CreateBucketIfNotExists([]byte(data.p.rootBucket))
+		b := rootB
 		for _, node := range data.p.nodes {
 			if lastErr != nil {
 				return lastErr
@@ -75,8 +76,9 @@ func (d *genDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional, 
 					return fmt.Errorf("No value for %v", node.domainName)
 				}
 				b, lastErr = b.CreateBucketIfNotExists(node.value)
-			} else if node.pt == keyType && node.autoinc {
-				id, err := b.NextSequence()
+			} else if node.pt == keyType && node.isAutoInc() {
+				id, err := getAutoIncKey(node.flags, rootB, b)
+				//				fmt.Println("GOT AUTOINC", id)
 				if err != nil {
 					return err
 				}
@@ -365,8 +367,10 @@ type wildcardIterator struct {
 
 func (w *wildcardIterator) Next() any {
 	k, v, err := w.step()
+	//	fmt.Println("Next() 1", k, string(v), err)
 	for (len(k) < 1 || len(v) < 1) && err == nil {
 		k, v, err = w.step()
+		//		fmt.Println("Next() 2", k, string(v), err)
 	}
 	if err != nil {
 		if err != errFinished {
@@ -379,6 +383,7 @@ func (w *wildcardIterator) Next() any {
 
 // domainItem converst the key and value into a domain item.
 func (w *wildcardIterator) domainItem(k, v []byte) any {
+	//	fmt.Println("domain item", k, string(v), "path len", len(w.steps))
 	item, err := w.meta.fromDb(w.a.New(), v)
 	//	fmt.Println("key", string(k), "value", string(v))
 	w.err = cmp.Or(w.err, err)
@@ -389,12 +394,15 @@ func (w *wildcardIterator) domainItem(k, v []byte) any {
 			if i < len(w.steps) {
 				if node.ft == stringType {
 					value = string(w.steps[i].key)
+				} else if node.ft == uint64Type {
+					value = genBtoi(k)
 				}
 			}
 			w.req.NewValues[i] = value
 		}
 	}
 	reflect.Set(w.req, item)
+	//	fmt.Println("return domain item", item)
 	return item
 }
 
@@ -434,23 +442,43 @@ func (g *wildcardIterator) step() ([]byte, []byte, error) {
 				step.key = g.p.nodes[idx].value
 			}
 			k := g.key()
+			//			fmt.Println("key ans 1", k)
 			g.popStep()
 			return g.getStep(currentBucket, k)
 		}
+		//		fmt.Println(tabs, "step d")
 		if step.finished {
 			g.popStep()
 			return nil, nil, nil
 		}
 		// Handle keys (leaf)
 		node := g.p.nodes[idx]
+		//		fmt.Println(tabs, "step e")
 		if node.leaf {
-			g.popStep()
-			return g.getStep(currentBucket, g.key())
+			// Ugh -- I don't know why this is doing it. It should
+			// be doing an iteration if there is no key, or a direct
+			// load if there is a key.
+			// Ugh... OK, this is either a composite key, unless
+			// this is an auto inc, right?
+			//			fmt.Println(tabs, "step f key")
+			if g.keyIsWildcard() {
+				// Handle autoinc keys.
+				// TODO: Account for specifying an index
+				step.stepType = cursorStep
+				step.c = currentBucket.Cursor()
+				k, v := step.c.First()
+				//				fmt.Println(tabs, "autoinc cursor first", k, string(v))
+				return g.cursorStep(k, v, step)
+			} else {
+				g.popStep()
+				//				fmt.Println(tabs, "step f.2 get key now", g.key())
+				return g.getStep(currentBucket, g.key())
+			}
 		}
 		// Handle buckets - direct
-		//		fmt.Println(tabs, "step d key", node.value)
+		//		fmt.Println(tabs, "step g key", node.value)
 		if node.value != nil {
-			//			fmt.Println(tabs, "step e direct key", node.value)
+			//			fmt.Println(tabs, "step g direct key", node.value)
 			step.key = node.value
 			step.finished = true
 			step.b = currentBucket.Bucket(step.key)
@@ -469,7 +497,7 @@ func (g *wildcardIterator) step() ([]byte, []byte, error) {
 		return g.cursorStep(k, v, step)
 	case cursorStep:
 		k, v := step.c.Next()
-		//		fmt.Println(tabs, "cursor step", string(k))
+		//		fmt.Println(tabs, "cursor step", string(k), string(v))
 		return g.cursorStep(k, v, step)
 	}
 	// Shouldn't reach here
@@ -488,24 +516,33 @@ func (g *wildcardIterator) getStep(b *bolt.Bucket, k boltKey) ([]byte, []byte, e
 }
 
 func (g *wildcardIterator) cursorStep(k, v []byte, step *wildcardIteratorStep) ([]byte, []byte, error) {
+	//	fmt.Println("cursorStep 1", k, string(v))
 	if k == nil {
+		//		fmt.Println("cursorStep 2")
 		g.popStep()
 	} else if v == nil {
+		//		fmt.Println("cursorStep 3")
 		step.key = k
 		step.b = nil
 		b := g.bucket()
 		if b == nil {
 			return nil, nil, fmt.Errorf("cursor step missing parent bucket")
 		}
+		//		fmt.Println("cursorStep 4")
 		step.b = b.Bucket(k)
 		if step.b == nil {
 			return nil, nil, fmt.Errorf("cursor step can't find bucket")
 		}
+		//		fmt.Println("cursorStep 5")
 		g.steps = append(g.steps, wildcardIteratorStep{})
 	} else {
+		//		fmt.Println("cursorStep 6")
 		// I think I ignore these, I'm in a bucket and need to
 		// go a step deeper to find values.
+		// ERR no, this is when an item is found
+		return k, v, nil
 	}
+	//	fmt.Println("cursorStep 7")
 	return nil, nil, nil
 }
 
@@ -528,6 +565,19 @@ func (g *wildcardIterator) bucket() *bolt.Bucket {
 	return g.b
 }
 
+// keyIsWildcard answers true if the current key is a wildcard.
+func (g *wildcardIterator) keyIsWildcard() bool {
+	if len(g.steps) < 1 {
+		return false
+	}
+	idx := len(g.steps) - 1
+	if idx >= len(g.p.nodes) {
+		return false
+	}
+	node := g.p.nodes[idx]
+	return node.isAutoInc()
+}
+
 // key answers the current key based on the path rules.
 // nil for error.
 func (g *wildcardIterator) key() boltKey {
@@ -538,6 +588,7 @@ func (g *wildcardIterator) key() boltKey {
 		}
 		node := g.p.nodes[i]
 		if step.key == nil {
+			fmt.Printf("make err missing key for %v\n", node.domainName)
 			g.err = cmp.Or(g.err, fmt.Errorf("missing key for %v", node.domainName))
 			return nil
 		}
@@ -591,7 +642,7 @@ func newPath(rootBucket string, buckets []genKeyMetadata) *path {
 			boltName:   b.boltName,
 			ft:         b.ft,
 			leaf:       b.leaf,
-			autoinc:    b.autoInc,
+			flags:      b.flags,
 		}
 		if b.leaf {
 			pn.pt = keyType
@@ -608,10 +659,21 @@ type pathNode struct {
 	boltName   string
 	// value -- name of the bucket or key
 	value boltKey
-	//	value   string
-	ft      fieldType
-	leaf    bool
-	autoinc bool
+	ft    fieldType
+	leaf  bool
+	flags keyFlags
+}
+
+func (n pathNode) isAutoInc() bool {
+	return n.isAutoIncGlobal() || n.isAutoIncLocal()
+}
+
+func (n pathNode) isAutoIncGlobal() bool {
+	return n.flags&FlagAutoIncGlobal != 0
+}
+
+func (n pathNode) isAutoIncLocal() bool {
+	return n.flags&FlagAutoIncLocal != 0
 }
 
 type path struct {
@@ -682,6 +744,17 @@ func (p *path) makeKey() (boltKey, error) {
 		key = append(key, n.value...)
 	}
 	return key, nil
+}
+
+// ---------------------------------------------------------
+// MISC
+
+func getAutoIncKey(flags keyFlags, root, b *bolt.Bucket) (uint64, error) {
+	if flags&FlagAutoIncLocal != 0 {
+		return b.NextSequence()
+	} else {
+		return root.NextSequence()
+	}
 }
 
 var errFinished = fmt.Errorf("finished")

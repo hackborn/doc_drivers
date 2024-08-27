@@ -66,8 +66,8 @@ type genKeyMetadata struct {
 	// composite of all prior keys.
 	leaf bool
 
-	// autoInc indicates this is an automatically incrementing key.
-	autoInc bool
+	// Store information like autoinc state.
+	flags keyFlags
 }
 
 func genMakeDomainNames(keys []genKeyMetadata) []string {

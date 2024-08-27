@@ -161,7 +161,7 @@ func (n *goNode) runMetadataDef(data *goNodeData, pin *pipeline.StructData) (Met
 				// Omit this field from the DB.
 				continue
 			} else if pt.HasKey {
-				if pt.AutoInc && field.RawType != "uint64" {
+				if pt.Autoinc() && field.RawType != "uint64" {
 					return md, jd, fmt.Errorf("Autoinc must be on uint64 type (%v/%v)", pin.Name, field.Name)
 				}
 				boltName := data.casingFn(field.Name)
@@ -176,7 +176,7 @@ func (n *goNode) runMetadataDef(data *goNodeData, pin *pipeline.StructData) (Met
 				key := MetadataKeyDef{DomainName: field.Name,
 					BoltName: boltName,
 					Ft:       ft,
-					AutoInc:  pt.AutoInc,
+					Flags:    pt.Flags,
 					keyInfo:  &keyInfo,
 				}
 				md.Buckets = append(md.Buckets, key)
@@ -217,14 +217,6 @@ func (n *goNode) flushValidate(nodeData *goNodeData) error {
 		if err != nil {
 			return err
 		}
-		// Set the leaf value here. Keys are a leaf if they
-		// are the only key, or they are the final key and they
-		// auto increment.
-		if len(m.Buckets) == 1 {
-			m.Buckets[0].Leaf = true
-		} else if len(m.Buckets) > 1 && m.Buckets[len(m.Buckets)-1].AutoInc == true {
-			m.Buckets[len(m.Buckets)-1].Leaf = true
-		}
 	}
 	return nil
 }
@@ -247,6 +239,9 @@ func (n *goNode) flushMakeVars(nodeData *goNodeData) (map[string]any, error) {
 		slices.SortFunc(md.Buckets, func(a, b MetadataKeyDef) int {
 			return compareKeys(a.keyInfo, b.keyInfo)
 		})
+		// Autoincs are always at the tail.
+		md.sortAutoInc()
+		(&md).setLeaf()
 		nodeData.metadata[i] = md
 	}
 	m["Metadata"] = nodeData.metadata
