@@ -2,6 +2,7 @@ package bboltbackend
 
 import (
 	"embed"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/hackborn/onefunc/errors"
 	"github.com/hackborn/onefunc/pipeline"
 
+	bboltgendriver "github.com/hackborn/doc_drivers/backends/bbolt/gen"
 	"github.com/hackborn/doc_drivers/backends/bbolt/nodes"
 	bboltrefdriver "github.com/hackborn/doc_drivers/backends/bbolt/ref"
 	"github.com/hackborn/doc_drivers/graphs"
@@ -42,22 +44,18 @@ func addGraphs(m map[string]graphs.Entry) {
 	}
 }
 
-func newOpenFunc(f registry.Factory) func() error {
+func newOpenFunc(registry.Factory) func() error {
 	return func() error {
-		// This is just for development. Delete the database each time.
-		err := os.Remove(f.DbPath)
-		if err != nil && !os.IsNotExist(err) {
-			return err
-		}
-
 		nodes.RegisterNodes()
 
 		// Make drivers accessible to nodes without going through the backend
 		refFn := func() doc.Driver {
-			return bboltrefdriver.NewDriver(nodes.FormatBbolt)
+			inner := bboltrefdriver.NewDriver(nodes.FormatBbolt)
+			return &openingDriver{inner: inner}
 		}
 		genFn := func() doc.Driver {
-			return bboltrefdriver.NewDriver(nodes.FormatBbolt)
+			inner := bboltgendriver.NewDriver(nodes.FormatBbolt)
+			return &openingDriver{inner: inner}
 		}
 
 		doc.Register("ref/"+nodes.FormatBbolt, refFn())
@@ -69,6 +67,43 @@ func newOpenFunc(f registry.Factory) func() error {
 func newPrepareFunc() registry.PrepareRunFunc {
 	return func(f registry.Factory, graphName string, vars map[string]any) {
 	}
+}
+
+// openingDriver wraps the actual driver and adds one responsibility,
+// to clear out the database file. It works because the Open() function
+// returns a new driver. No other functions in this driver should be called.
+type openingDriver struct {
+	inner doc.Driver
+}
+
+func (d *openingDriver) Open(dataSourceName string) (doc.Driver, error) {
+	fmt.Println("remove", dataSourceName)
+	err := os.Remove(dataSourceName)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	return d.inner.Open(dataSourceName)
+}
+
+func (d *openingDriver) Close() error {
+	panic("should not be called")
+}
+
+func (d *openingDriver) Format() doc.Format {
+	panic("should not be called")
+}
+
+func (d *openingDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, error) {
+	panic("should not be called")
+}
+
+func (d *openingDriver) Set(req doc.SetRequestAny, a doc.Allocator) (*doc.Optional, error) {
+	panic("should not be called")
+}
+
+func (d *openingDriver) Delete(req doc.DeleteRequestAny, a doc.Allocator) (*doc.Optional, error) {
+	panic("should not be called")
 }
 
 //go:embed graphs/*
