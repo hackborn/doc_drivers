@@ -1,0 +1,7 @@
+graph (
+    load(Fs="testnodedata",Glob="testnodedata/*.json") -> testgen(Verbose=true, Backend=$backend)
+)
+
+env (
+    $backend="$backend"
+)
