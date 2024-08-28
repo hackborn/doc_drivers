@@ -73,11 +73,15 @@ func (n *testDocDriverNode) runContent(data *testDocDriverData, cd *pipeline.Con
 	defer db.Close()
 
 	// Run tests
-	for _, te := range entries {
-		err = cmp.Or(err, n.runTest(db, te))
+	for i, te := range entries {
+		err = cmp.Or(err, n.errWrap(n.runTest(db, te), cd.Name, i))
 	}
+	return err
+}
+
+func (n *testDocDriverNode) errWrap(err error, filename string, index int) error {
 	if err != nil {
-		err = fmt.Errorf("%v %w", cd.Name, err)
+		err = fmt.Errorf("%v/%v %w", filename, index, err)
 	}
 	return err
 }

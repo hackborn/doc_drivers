@@ -51,6 +51,6 @@
     "command": "get",
     "type": "Filing",
     "expr": "ticker = \"GOOG\" AND form = \"wd-40\"",
-    "response": ["0/Ticker=GOOG"]
+    "response": ["{count}=2", "0/Ticker=GOOG"]
   }
 ]
