@@ -2,7 +2,6 @@ package bboltbackend
 
 import (
 	"embed"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -77,7 +76,6 @@ type openingDriver struct {
 }
 
 func (d *openingDriver) Open(dataSourceName string) (doc.Driver, error) {
-	fmt.Println("remove", dataSourceName)
 	err := os.Remove(dataSourceName)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err

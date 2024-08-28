@@ -4,9 +4,9 @@
     "type": "Filing",
     "item": {
       "Ticker": "AAPL",
-      "EndDate": "2023",
+      "end": "2023",
       "Form": "wd-40",
-      "Value": 10000,
+      "val": 10000,
       "Units": "usd"
     },
     "response": ["Ticker=AAPL"]
@@ -16,9 +16,9 @@
     "type": "Filing",
     "item": {
       "Ticker": "GOOG",
-      "EndDate": "2023",
+      "end": "2023",
       "Form": "wd-40",
-      "Value": 10000,
+      "val": 10000,
       "Units": "usd"
     },
     "response": ["Ticker=GOOG"]
@@ -28,9 +28,9 @@
     "type": "Filing",
     "item": {
       "Ticker": "GOOG",
-      "EndDate": "2022",
+      "end": "2022",
       "Form": "wd-40",
-      "Value": 10000,
+      "val": 10000,
       "Units": "usd"
     },
     "response": ["Ticker=GOOG"]
@@ -40,9 +40,9 @@
     "type": "Filing",
     "item": {
       "Ticker": "GOOG",
-      "EndDate": "2022",
+      "end": "2022",
       "Form": "wd-40",
-      "Value": 10010,
+      "val": 10010,
       "Units": "usd"
     },
     "response": ["Ticker=GOOG"]
@@ -51,6 +51,27 @@
     "command": "get",
     "type": "Filing",
     "expr": "ticker = \"GOOG\" AND form = \"wd-40\"",
-    "response": ["{count}=2", "0/Ticker=GOOG"]
+    "response": ["{count}=2", "0/Ticker=GOOG", "1/Ticker=GOOG"]
+  },
+  {
+    "command": "get",
+    "type": "Filing",
+    "expr": "ticker = GOOG AND end = 2022 AND form = \"wd-40\"",
+    "response": ["{count}=1", "0/Ticker=GOOG", "0/EndDate=2022"]
+  },
+  {
+    "command": "delete",
+    "type": "Filing",
+    "item": {
+      "Ticker": "GOOG",
+      "end": "2022",
+      "Form": "wd-40"
+    }
+  },
+  {
+    "command": "get",
+    "type": "Filing",
+    "expr": "ticker = GOOG AND end = 2022 AND form = \"wd-40\"",
+    "response": ["{count}=0"]
   }
 ]

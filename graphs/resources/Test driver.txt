@@ -1,7 +1,0 @@
-graph (
-    runref(Backend=$backend) -> compare <- rungen(Backend=$backend)
-)
-
-env (
-    $backend="$backend"
-)

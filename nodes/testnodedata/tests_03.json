@@ -1,0 +1,35 @@
+[
+  {
+    "command": "set",
+    "type": "CollectionSetting",
+    "item": {
+      "Name": "favs",
+      "Value": [4, 7, 8]
+    }
+  },
+  {
+    "command": "get",
+    "type": "CollectionSetting",
+    "expr": "name = favs",
+    "response": ["{count}=1", "0/Name=favs", "0/Value/0=4"]
+  },
+  {
+    "command": "set",
+    "type": "UiSetting",
+    "item": {
+      "Name": "ui",
+      "Value": { "color": "red", "theme": "dark" }
+    }
+  },
+  {
+    "command": "get",
+    "type": "UiSetting",
+    "expr": "name = ui",
+    "response": [
+      "{count}=1",
+      "0/Name=ui",
+      "0/Value/color=red",
+      "0/Value/theme=dark"
+    ]
+  }
+]

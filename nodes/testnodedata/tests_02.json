@@ -1,0 +1,41 @@
+[
+  {
+    "command": "set",
+    "type": "Events",
+    "filter": "CreateItem",
+    "item": {
+      "Name": "a",
+      "Value": "Up"
+    }
+  },
+  {
+    "command": "set",
+    "type": "Events",
+    "filter": "CreateItem",
+    "item": {
+      "Name": "b",
+      "Value": "down"
+    }
+  },
+  {
+    "command": "get",
+    "type": "Events",
+    "expr": "name = b",
+    "response": ["{count}=1", "0/Name=b", "0/Value=down"]
+  },
+  {
+    "command": "set",
+    "type": "Events",
+    "filter": "CreateItem",
+    "item": {
+      "Name": "b",
+      "Value": "charm"
+    }
+  },
+  {
+    "command": "get",
+    "type": "Events",
+    "expr": "name = b",
+    "response": ["{count}=2"]
+  }
+]
