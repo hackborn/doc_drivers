@@ -12,6 +12,19 @@
     "response": ["Ticker=AAPL"]
   },
   {
+    "command": "get",
+    "type": "Filing",
+    "expr": "ticker = AAPL",
+    "response": [
+      "{count}=1",
+      "0/Ticker=AAPL",
+      "0/EndDate=2023",
+      "0/Form=\"wd-40\"",
+      "0/Value=10000",
+      "0/Units=usd"
+    ]
+  },
+  {
     "command": "set",
     "type": "Filing",
     "item": {

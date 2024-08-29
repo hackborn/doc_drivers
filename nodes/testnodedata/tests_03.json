@@ -11,7 +11,13 @@
     "command": "get",
     "type": "CollectionSetting",
     "expr": "name = favs",
-    "response": ["{count}=1", "0/Name=favs", "0/Value/0=4"]
+    "response": [
+      "{count}=1",
+      "0/Name=favs",
+      "0/Value/0=4",
+      "0/Value/1=7",
+      "0/Value/2=8"
+    ]
   },
   {
     "command": "set",

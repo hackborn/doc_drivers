@@ -16,13 +16,16 @@ import (
 )
 
 func newTestDocDriverNode(docDriverPrefix string) pipeline.Node {
-	n := &testDocDriverNode{}
+	n := &testDocDriverNode{filterFn: testFilterAcceptAll}
+	//	n.filterFn = testFilterAccept03_to_1()
 	n.docDriverPrefix = docDriverPrefix
 	return n
 }
 
 type testDocDriverNode struct {
 	testDocDriverData
+
+	filterFn testFilterFunc
 }
 
 type testDocDriverData struct {
@@ -75,6 +78,9 @@ func (n *testDocDriverNode) runContent(data *testDocDriverData, cd *pipeline.Con
 
 	// Run tests
 	for i, te := range entries {
+		if !n.filterFn(cd.Name, i) {
+			continue
+		}
 		err = cmp.Or(err, n.errWrap(n.runTest(db, te), cd.Name, i))
 	}
 	return err
@@ -217,4 +223,57 @@ func (e testEntry) MakeFilter() doc.Filter {
 		return doc.FilterCreateItem
 	}
 	return doc.Filter{}
+}
+
+// ---------------------------------------------------------
+// FILTERING MACROS
+
+func testFilterAcceptAll(string, int) bool {
+	return true
+}
+
+func testFilterAccept03_to_1() testFilterFunc {
+	filter03_to_1 := testFilter{
+		accepts: []testFilterAccept{
+			{filename: "tests_03.json", indexes: []int{0, 1}},
+		},
+	}
+	return func(filename string, index int) bool {
+		return filter03_to_1.accept(filename, index)
+	}
+}
+
+// ---------------------------------------------------------
+// FILTERING
+
+type testFilterFunc func(filename string, index int) bool
+
+type testFilter struct {
+	accepts []testFilterAccept
+}
+
+func (f testFilter) accept(filename string, index int) bool {
+	for _, tfa := range f.accepts {
+		if tfa.accept(filename, index) {
+			return true
+		}
+	}
+	return false
+}
+
+type testFilterAccept struct {
+	filename string
+	indexes  []int
+}
+
+func (f testFilterAccept) accept(filename string, index int) bool {
+	if f.filename != filename {
+		return false
+	}
+	for _, v := range f.indexes {
+		if v == index {
+			return true
+		}
+	}
+	return false
 }
