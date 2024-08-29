@@ -389,17 +389,30 @@ func (w *wildcardIterator) domainItem(k, v []byte) any {
 	w.err = cmp.Or(w.err, err)
 	// Set the keys. The values should be in the steps.
 	for i, node := range w.p.nodes {
+		//		fmt.Println("i", i, "node", node, "newValues len", len(w.req.NewValues))
+		//		fmt.Println("node value", string(node.value))
+		var value any
 		if i < len(w.req.NewValues) {
-			var value any
+			//			fmt.Println("b steps", len(w.steps))
 			if i < len(w.steps) {
+				//				fmt.Println("c")
 				if node.ft == stringType {
 					value = string(w.steps[i].key)
 				} else if node.ft == uint64Type {
 					value = genBtoi(k)
 				}
+			} else if len(node.value) > 0 {
+				// TODO: Total flippin' hack because for some reason in
+				// one case there aren't steps to match the nodes. Don't know
+				// wny and don't remember how trustworthy this value is.
+				if node.ft == stringType {
+					value = string(node.value)
+				} else if node.ft == uint64Type {
+					value = genBtoi(node.value)
+				}
 			}
-			w.req.NewValues[i] = value
 		}
+		w.req.NewValues[i] = value
 	}
 	reflect.Set(w.req, item)
 	//	fmt.Println("return domain item", item)
