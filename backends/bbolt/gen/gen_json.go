@@ -15,10 +15,23 @@ type genJsonEvents struct {
 	Value string `json:"value"`
 }
 
+type genJsonFavEntry struct {
+	Id       int64 `json:"id"`
+	LastUsed int64 `json:"lastused"`
+}
+
+type genJsonFavouritesSetting struct {
+	Value []genJsonFavEntry `json:"value"`
+}
+
 type genJsonFiling struct {
 	Value      int64  `json:"val"`
 	Units      string `json:"units"`
 	FiscalYear int    `json:"fy"`
+}
+
+type genJsonSkip struct {
+	Value float64 `json:"value"`
 }
 
 type genJsonUiSetting struct {

@@ -49,6 +49,13 @@ var (
 			},
 			newConvStruct: func() any { return &genJsonEvents{} },
 		},
+		`FavouritesSetting`: {
+			rootBucket: "settings",
+			buckets: []genKeyMetadata{
+				{domainName: "Name", boltName: "name", ft: stringType, leaf: true, flags: 0},
+			},
+			newConvStruct: func() any { return &genJsonFavouritesSetting{} },
+		},
 		`Filing`: {
 			rootBucket: "filing",
 			buckets: []genKeyMetadata{

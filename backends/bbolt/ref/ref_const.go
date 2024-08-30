@@ -46,6 +46,13 @@ var (
 			},
 			newConvStruct: func() any { return &_refJsonEvents{} },
 		},
+		`FavouritesSetting`: {
+			rootBucket: "settings",
+			buckets: []_refKeyMetadata{
+				{domainName: "Name", boltName: "name", ft: stringType, leaf: true, flags: 0},
+			},
+			newConvStruct: func() any { return &_refJsonFavouritesSetting{} },
+		},
 		`Filing`: {
 			rootBucket: "filing",
 			buckets: []_refKeyMetadata{

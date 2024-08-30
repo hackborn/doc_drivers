@@ -10,7 +10,7 @@ env (
     $loadsep=";",
     $save="$pathroot/backends/bbolt/gen",
     $pkg="bboltgendriver",
-    $prefix="gen"
-    $tableprefix=""
+    $prefix="gen",
+    $tableprefix="",
     $flags="lowercase"
 )

@@ -112,6 +112,8 @@ func (n *testDocDriverNode) runGetTest(db *doc.DB, te testEntry) error {
 		return runGetTest[domain.CollectionSetting](db, te)
 	case "Events":
 		return runGetTest[domain.Events](db, te)
+	case "FavouritesSetting":
+		return runGetTest[domain.FavouritesSetting](db, te)
 	case "Filing":
 		return runGetTest[domain.Filing](db, te)
 	case "UiSetting":
@@ -127,6 +129,8 @@ func (n *testDocDriverNode) runSetTest(db *doc.DB, te testEntry) error {
 		return runSetTest[domain.CollectionSetting](db, te)
 	case "Events":
 		return runSetTest[domain.Events](db, te)
+	case "FavouritesSetting":
+		return runSetTest[domain.FavouritesSetting](db, te)
 	case "Filing":
 		return runSetTest[domain.Filing](db, te)
 	case "UiSetting":
@@ -142,6 +146,8 @@ func (n *testDocDriverNode) runDeleteTest(db *doc.DB, te testEntry) error {
 		return runDeleteTest[domain.CollectionSetting](db, te)
 	case "Events":
 		return runDeleteTest[domain.Events](db, te)
+	case "FavouritesSetting":
+		return runDeleteTest[domain.FavouritesSetting](db, te)
 	case "Filing":
 		return runDeleteTest[domain.Filing](db, te)
 	case "UiSetting":

@@ -15,6 +15,15 @@ type _refJsonEvents struct {
 	Value string `json:"value"`
 }
 
+type _refJsonFavEntry struct {
+	Id       int64 `json:"id"`
+	LastUsed int64 `json:"lastused"`
+}
+
+type _refJsonFavouritesSetting struct {
+	Value []_refJsonFavEntry `json:"value"`
+}
+
 type _refJsonFiling struct {
 	Value      int64  `json:"val"`
 	Units      string `json:"units"`

@@ -6,8 +6,6 @@ package bboltgendriver
 import (
 	"encoding/json"
 	"sync/atomic"
-
-	"github.com/hackborn/onefunc/reflect"
 )
 
 type genMetadataNewConvFunc func() any
@@ -20,6 +18,20 @@ type genMetadata struct {
 	dk atomic.Pointer[[]string] // List of the buckets/domainNames
 }
 
+// toDb converts a domain value for this metadata into a database
+// value. Database values are just copies of the domain value with
+// metadata appropriate for the JSON schema for the database.
+func (m *genMetadata) toDb(src any) (any, error) {
+	return src, nil
+}
+
+// fromDb reads raw database data into a domain struct.
+func (m *genMetadata) fromDb(dst any, dbdata []byte) (any, error) {
+	err := json.Unmarshal(dbdata, dst)
+	return dst, err
+}
+
+/*
 // toDb converts a domain value for this metadata into a database
 // value. Database values are just copies of the domain value with
 // metadata appropriate for the JSON schema for the database.
@@ -39,6 +51,7 @@ func (m *genMetadata) fromDb(dst any, dbdata []byte) (any, error) {
 	err = reflect.Copy(dst, src)
 	return dst, err
 }
+*/
 
 func (m *genMetadata) DomainKeys() []string {
 	if p := m.dk.Load(); p != nil {

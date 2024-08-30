@@ -139,7 +139,6 @@ func (d *genDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, err
 		return nil, err
 	}
 	err = d.db.View(func(tx *bolt.Tx) error {
-		//		it, err := newGetIterator(get.meta, tx, get.meta.rootBucket, get.keyValuesS, a)
 		it, err := newGetIterator(get.meta, tx, get.p, a)
 		if err != nil {
 			return err
@@ -156,31 +155,6 @@ func (d *genDriver) Get(req doc.GetRequest, a doc.Allocator) (*doc.Optional, err
 type getData struct {
 	meta *genMetadata
 	p    *path
-
-	// These slices are all the same size, which will be
-	// the metadata keys length. Store the various pieces of info needed.
-	// keyValuesA and S are the same data, just composed for where they're
-	// being used.
-	domainNames []string
-	keyValuesA  []any
-	keyValuesS  []string
-}
-
-func (g *getData) BinaryConjunction(keyword string) error {
-	if keyword != doc.AndKeyword {
-		return fmt.Errorf("Unsupported binary: %v", keyword)
-	}
-	return nil
-}
-
-func (g *getData) BinaryAssignment(lhs, rhs string) error {
-	for i, bucket := range g.meta.buckets {
-		if bucket.boltName == lhs {
-			g.keyValuesA[i] = rhs
-			g.keyValuesS[i] = rhs
-		}
-	}
-	return nil
 }
 
 func (d *genDriver) prepareGet(req doc.GetRequest, a doc.Allocator) (getData, error) {
@@ -192,14 +166,6 @@ func (d *genDriver) prepareGet(req doc.GetRequest, a doc.Allocator) (getData, er
 	}
 	get.p = newPath(meta.rootBucket, meta.buckets)
 	err := extractExpr(req.Condition, get.p)
-
-	get.domainNames = meta.DomainKeys()
-	get.keyValuesA = make([]any, len(get.domainNames))
-	get.keyValuesS = make([]string, len(get.domainNames))
-	if !ok {
-		return get, fmt.Errorf("missing metadata for \"%v\"", tn)
-	}
-	err = extractExpr(req.Condition, &get)
 	return get, err
 }
 
@@ -601,8 +567,7 @@ func (g *wildcardIterator) key() boltKey {
 		}
 		node := g.p.nodes[i]
 		if step.key == nil {
-			fmt.Printf("make err missing key for %v\n", node.domainName)
-			g.err = cmp.Or(g.err, fmt.Errorf("missing key for %v", node.domainName))
+			g.err = cmp.Or(g.err, fmt.Errorf("missing key for %v/%v", g.p.rootBucket, node.domainName))
 			return nil
 		}
 		if node.leaf {

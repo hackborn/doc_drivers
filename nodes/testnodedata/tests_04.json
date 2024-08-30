@@ -1,0 +1,25 @@
+[
+  {
+    "command": "set",
+    "type": "FavouritesSetting",
+    "item": {
+      "Name": "a",
+      "Value": [
+        {
+          "Id": 10
+        }
+      ]
+    }
+  },
+  {
+    "command": "get",
+    "type": "FavouritesSetting",
+    "expr": "name = a",
+    "response": [
+      "{count}=1",
+      "0/Name=a",
+      "0/Value/{count}=1",
+      "0/Value/0/Id=10"
+    ]
+  }
+]

@@ -23,6 +23,7 @@ func MakeDriver(settings MakeDriverSettings) error {
 		"$prefix":      settings.Prefix,
 		"$tableprefix": "",
 		"$droptables":  false,
+		"$flags":       settings.makeFlags(),
 	}
 	_, err = pipeline.RunExpr(graph, nil, env)
 	return err
@@ -55,4 +56,21 @@ type MakeDriverSettings struct {
 
 	// Prefix is the prefix name to use for the driver types.
 	Prefix string
+
+	// Flags is a list of per-driver named flags.
+	Flags []string
+}
+
+func (s MakeDriverSettings) makeFlags() string {
+	f := ""
+	for _, flag := range s.Flags {
+		if flag == "" {
+			continue
+		}
+		if f != "" {
+			f += ", "
+		}
+		f += flag
+	}
+	return f
 }
